@@ -31,6 +31,7 @@ import io.github.phillhf.iptv.ui.Tab
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -70,6 +71,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile private var m3uCache: List<Stream>? = null
     private val m3uLock = Any()
     private val epgCache = HashMap<String, Pair<Long, List<EpgEntry>>>()
+    private val vodInfos = mutableStateMapOf<String, VodInfo>()
+    private var focusJob: Job? = null
+
+    /** Film oder Serie unter dem Fokus der Fernbedienung bzw. zuletzt angetippt. */
+    var focused by mutableStateOf<Stream?>(null)
+        private set
 
     init {
         (accounts.firstOrNull { it.id == store.activeId } ?: accounts.firstOrNull())?.let { activate(it) }
@@ -86,6 +93,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         catalogs.clear()
         lastCategory.clear()
         epgCache.clear()
+        vodInfos.clear()
+        focused = null
         m3uCache = null
         status = null
         active = a
@@ -221,14 +230,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun vodInfo(s: Stream): VodInfo? {
+        vodInfos[s.key]?.let { return it }
         val a = active ?: return null
         if (a.type != SourceType.XTREAM) return null
         return try {
-            withContext(Dispatchers.IO) { client(a).vodInfo(s.id) }
+            withContext(Dispatchers.IO) { client(a).vodInfo(s.id) }.also { vodInfos[s.key] = it }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /** Filmdetails, die schon geladen sind (für den Infobereich über dem Cover-Raster). */
+    fun cachedVodInfo(s: Stream): VodInfo? = vodInfos[s.key]
+
+    /**
+     * Merkt sich den Titel unter dem Fokus. Filmdetails werden erst geladen, wenn der Fokus kurz stehen
+     * bleibt, damit schnelles Durchscrollen den Server nicht mit Anfragen flutet.
+     */
+    fun focus(s: Stream) {
+        if (focused?.key == s.key) return
+        focused = s
+        focusJob?.cancel()
+        if (s.kind == Kind.MOVIE && s.key !in vodInfos) {
+            focusJob = viewModelScope.launch {
+                delay(400)
+                vodInfo(s)
+            }
         }
     }
 

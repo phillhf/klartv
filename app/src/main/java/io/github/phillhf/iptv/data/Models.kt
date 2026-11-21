@@ -16,6 +16,9 @@ data class Stream(
     val number: Int = 0,
     val plot: String? = null,
     val rating: String? = null,
+    val backdrop: String? = null,
+    val genre: String? = null,
+    val year: String? = null,
 ) {
     val key: String get() = "${kind.name}:$id"
 }
@@ -33,7 +36,16 @@ data class Episode(
     val key: String get() = "EP:$id"
 }
 
-data class SeriesInfo(val plot: String?, val cover: String?, val seasons: Map<Int, List<Episode>>)
+data class SeriesInfo(
+    val plot: String?,
+    val cover: String?,
+    val seasons: Map<Int, List<Episode>>,
+    val backdrop: String? = null,
+    val genre: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val year: String? = null,
+)
 
 data class VodInfo(
     val plot: String? = null,
@@ -41,6 +53,10 @@ data class VodInfo(
     val year: String? = null,
     val duration: String? = null,
     val cover: String? = null,
+    val backdrop: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val rating: String? = null,
 )
 
 /** Eine Sendung im Programmführer, Zeiten in Millisekunden seit 1970. */

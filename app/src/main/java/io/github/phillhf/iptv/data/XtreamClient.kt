@@ -8,6 +8,16 @@ import java.io.IOException
 internal fun JSONObject.optStringOrNull(name: String): String? =
     if (isNull(name)) null else optString(name).trim().takeIf { it.isNotEmpty() }
 
+/** backdrop_path ist je nach Server eine Liste von Adressen oder eine einzelne Adresse. */
+internal fun JSONObject.backdrop(): String? = when (val b = opt("backdrop_path")) {
+    is JSONArray -> (0 until b.length()).map { b.optString(it).trim() }.firstOrNull { it.startsWith("http") }
+    is String -> b.trim().takeIf { it.startsWith("http") }
+    else -> null
+}
+
+/** Nur die Jahreszahl aus Angaben wie „2021-05-14“. */
+internal fun yearOf(value: String?): String? = value?.let { Regex("(19|20)\\d\\d").find(it)?.value }
+
 /** Zugriff auf Anbieter mit Xtream-Codes-Schnittstelle (player_api.php). */
 class XtreamClient(server: String, private val username: String, private val password: String) {
     val base = normalizeServer(server)
@@ -74,6 +84,7 @@ class XtreamClient(server: String, private val username: String, private val pas
                         kind, id, name, o.optStringOrNull("stream_icon"), category,
                         url = streamUrl("movie", id, o.optStringOrNull("container_extension") ?: "mp4"),
                         rating = o.optStringOrNull("rating")?.takeIf { it != "0" },
+                        year = yearOf(o.optStringOrNull("year") ?: o.optStringOrNull("releasedate")),
                     )
                 }
                 Kind.SERIES -> {
@@ -83,6 +94,9 @@ class XtreamClient(server: String, private val username: String, private val pas
                         url = "",
                         plot = o.optStringOrNull("plot"),
                         rating = o.optStringOrNull("rating")?.takeIf { it != "0" },
+                        backdrop = o.backdrop(),
+                        genre = o.optStringOrNull("genre"),
+                        year = yearOf(o.optStringOrNull("releaseDate") ?: o.optStringOrNull("release_date") ?: o.optStringOrNull("year")),
                     )
                 }
             }
@@ -97,9 +111,13 @@ class XtreamClient(server: String, private val username: String, private val pas
         return VodInfo(
             plot = info.optStringOrNull("plot") ?: info.optStringOrNull("description"),
             genre = info.optStringOrNull("genre"),
-            year = info.optStringOrNull("releasedate") ?: info.optStringOrNull("year"),
+            year = yearOf(info.optStringOrNull("releasedate") ?: info.optStringOrNull("year")),
             duration = info.optStringOrNull("duration"),
             cover = info.optStringOrNull("movie_image") ?: info.optStringOrNull("cover_big"),
+            backdrop = info.backdrop(),
+            cast = info.optStringOrNull("cast") ?: info.optStringOrNull("actors"),
+            director = info.optStringOrNull("director"),
+            rating = info.optStringOrNull("rating")?.takeIf { it != "0" },
         )
     }
 
@@ -142,6 +160,11 @@ class XtreamClient(server: String, private val username: String, private val pas
             plot = info?.optStringOrNull("plot"),
             cover = info?.optStringOrNull("cover"),
             seasons = seasons.mapValues { (_, list) -> list.sortedBy { it.number } },
+            backdrop = info?.backdrop(),
+            genre = info?.optStringOrNull("genre"),
+            cast = info?.optStringOrNull("cast"),
+            director = info?.optStringOrNull("director"),
+            year = yearOf(info?.optStringOrNull("releaseDate") ?: info?.optStringOrNull("release_date")),
         )
     }
 

@@ -38,9 +38,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -165,10 +168,66 @@ fun PosterImage(url: String?, title: String, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Großes, abgedunkeltes Hintergrundbild wie im Mediacenter. Nach unten und links läuft es in den
+ * Hintergrund aus, damit Text darauf lesbar bleibt. Ist nur ein Cover da, wird es weichgezeichnet.
+ */
 @Composable
-fun PosterCard(title: String, image: String?, onClick: () -> Unit) {
+fun Backdrop(url: String?, isCover: Boolean = false, modifier: Modifier = Modifier.fillMaxSize()) {
+    val bg = MaterialTheme.colorScheme.background
+    Box(modifier) {
+        if (!url.isNullOrBlank()) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = if (isCover) 0.35f else 0.5f,
+                modifier = Modifier.fillMaxSize().then(if (isCover) Modifier.blur(24.dp) else Modifier),
+            )
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.5f to bg.copy(alpha = 0.55f), 1f to bg)))
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to bg.copy(alpha = 0.85f), 0.65f to Color.Transparent)))
+    }
+}
+
+/** Titel, Eckdaten und Beschreibung über dem Cover-Raster bzw. auf der Detailseite. */
+@Composable
+fun HeroInfo(title: String, meta: String, plot: String?, modifier: Modifier = Modifier, plotLines: Int = 4) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+        if (!plot.isNullOrBlank()) {
+            Text(
+                plot,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = plotLines,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+            )
+        }
+    }
+}
+
+fun metaLine(vararg parts: String?): String =
+    parts.mapNotNull { it?.trim() }.filter { it.isNotEmpty() }.joinToString("  ·  ")
+
+@Composable
+fun PosterCard(title: String, image: String?, onFocused: (() -> Unit)? = null, onClick: () -> Unit) {
     val shape = RoundedCornerShape(10.dp)
-    Column(Modifier.focusRing(shape).clip(shape).clickable(onClick = onClick).padding(6.dp)) {
+    Column(
+        Modifier
+            .onFocusChanged { if (it.isFocused) onFocused?.invoke() }
+            .focusRing(shape)
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .padding(6.dp),
+    ) {
         PosterImage(image, title, Modifier.fillMaxWidth())
         Text(
             title,
@@ -225,6 +284,43 @@ fun StreamRow(
                     if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                     contentDescription = if (favorite) "Aus Favoriten entfernen" else "Zu Favoriten",
                     tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Folge mit Vorschaubild im Breitformat, Eckdaten und kurzer Beschreibung. */
+@Composable
+fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .focusRing(shape)
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.width(150.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            if (!image.isNullOrBlank()) {
+                AsyncImage(model = image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+        }
+        Column(Modifier.padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+            if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            if (!plot.isNullOrBlank()) {
+                Text(
+                    plot,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

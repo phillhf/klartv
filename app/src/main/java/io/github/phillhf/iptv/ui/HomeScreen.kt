@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -137,7 +138,9 @@ private fun CatalogView(vm: AppViewModel, kind: Kind, catalog: Catalog, wide: Bo
     }
     val selected = vm.lastCategory[kind]
     val choose: (String?) -> Unit = { id -> if (id == null) vm.lastCategory.remove(kind) else vm.lastCategory[kind] = id }
-    if (wide) {
+    if (wide && kind != Kind.LIVE) {
+        MediaView(vm, kind, catalog, selected ?: Catalog.ALL, choose)
+    } else if (wide) {
         val current = selected ?: Catalog.ALL
         Row(Modifier.fillMaxSize()) {
             CategoryList(catalog, current, Modifier.width(260.dp).fillMaxHeight(), choose)
@@ -151,6 +154,53 @@ private fun CatalogView(vm: AppViewModel, kind: Kind, catalog: Catalog, wide: Bo
         Column(Modifier.fillMaxSize()) {
             TitleBar(catalog.categories.firstOrNull { it.id == selected }?.name ?: "") { choose(null) }
             Items(vm, kind, catalog, selected, Modifier.weight(1f).fillMaxWidth())
+        }
+    }
+}
+
+/**
+ * Mediacenter-Ansicht für Filme und Serien auf TV und Tablet: Hintergrundbild und Infobereich zum Titel
+ * unter dem Fokus, darunter das Cover-Raster, links die Kategorien.
+ */
+@Composable
+private fun MediaView(vm: AppViewModel, kind: Kind, catalog: Catalog, current: String, choose: (String?) -> Unit) {
+    val list = remember(catalog, current) { catalog.inCategory(current) }
+    val item = vm.focused?.takeIf { it.kind == kind } ?: list.firstOrNull()
+    val info = item?.let { if (kind == Kind.MOVIE) vm.cachedVodInfo(it) else null }
+    val backdrop = info?.backdrop ?: item?.backdrop
+    val bg = MaterialTheme.colorScheme.background
+    Box(Modifier.fillMaxSize()) {
+        Backdrop(backdrop ?: info?.cover ?: item?.logo, isCover = backdrop == null)
+        Row(Modifier.fillMaxSize()) {
+            CategoryList(catalog, current, Modifier.width(240.dp).fillMaxHeight().background(bg.copy(alpha = 0.75f))) { choose(it) }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                if (item != null) {
+                    HeroInfo(
+                        title = item.name,
+                        meta = metaLine(
+                            info?.year ?: item.year,
+                            info?.genre ?: item.genre,
+                            info?.duration,
+                            (info?.rating ?: item.rating)?.let { "★ $it" },
+                        ),
+                        plot = info?.plot ?: item.plot,
+                        plotLines = 3,
+                        modifier = Modifier.fillMaxWidth().height(170.dp).padding(start = 24.dp, end = 24.dp, top = 20.dp),
+                    )
+                }
+                LazyVerticalGrid(
+                    GridCells.Adaptive(116.dp),
+                    Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    items(list) { s ->
+                        PosterCard(s.name, s.logo, onFocused = { vm.focus(s) }) {
+                            vm.focus(s)
+                            vm.open(if (kind == Kind.MOVIE) Screen.Movie(s) else Screen.Series(s))
+                        }
+                    }
+                }
+            }
         }
     }
 }
