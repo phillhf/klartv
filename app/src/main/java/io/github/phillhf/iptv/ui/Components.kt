@@ -178,7 +178,7 @@ fun PosterCard(
             if (!image.isNullOrBlank()) {
                 AsyncImage(model = image, contentDescription = title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
-            if (!rating.isNullOrBlank()) Badge("★ $rating", Modifier.align(Alignment.TopEnd).padding(6.dp), textColor = Klar.Gold)
+            if (!rating.isNullOrBlank()) Badge("★ $rating", Modifier.align(Alignment.TopEnd).padding(6.dp), textColor = Klar.Gold)
             CardProgress(progress)
         }
         if (showTitle) {
@@ -491,7 +491,7 @@ fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, progr
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.width(176.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(8.dp)).background(Klar.SurfaceHigh)) {
+        Box(Modifier.width(150.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(8.dp)).background(Klar.SurfaceHigh)) {
             if (!image.isNullOrBlank()) {
                 AsyncImage(model = image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }

@@ -25,7 +25,7 @@ private fun hsv(h: Float, s: Float, v: Float) = Color.HSVToColor(floatArrayOf(((
 fun fakeBitmap(url: String): Bitmap {
     val kind = url.removePrefix("demo://").substringBefore('/')
     val name = url.substringAfterLast('/')
-    val hue = (abs(name.hashCode()) % 360).toFloat()
+    val hue = (abs(name.hashCode() * 2654435761L) % 360).toFloat()
     return when (kind) {
         "poster" -> scene(300, 450, hue, poster = true)
         "logo" -> logo(name, hue)

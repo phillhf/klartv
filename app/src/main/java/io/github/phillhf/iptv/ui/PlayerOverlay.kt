@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -51,6 +53,7 @@ fun PlayerOverlay(item: PlayItem?, epg: List<EpgEntry>, visible: Boolean, messag
         }
     }
 
+    CompositionLocalProvider(LocalContentColor provides Klar.Text) {
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = visible && shown != null,
@@ -117,4 +120,5 @@ fun PlayerOverlay(item: PlayItem?, epg: List<EpgEntry>, visible: Boolean, messag
             }
         }
     }
+}
 }

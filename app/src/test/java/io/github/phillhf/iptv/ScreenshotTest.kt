@@ -6,7 +6,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
@@ -80,7 +84,11 @@ class ScreenshotTest {
         compose.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
+    @OptIn(ExperimentalTestApi::class)
     private fun focusOn(description: String, index: Int = 0) {
+        // Erst auf Tastatur-/Fernbedienungsmodus schalten, im Touch-Modus gibt es keinen Fokus
+        compose.onRoot().performKeyInput { pressKey(Key.DirectionDown) }
+        compose.waitForIdle()
         compose.onAllNodesWithContentDescription(description)[index]
             .performSemanticsAction(SemanticsActions.RequestFocus)
     }
@@ -99,7 +107,10 @@ class ScreenshotTest {
 
     @Test
     @Config(qualifiers = TV)
-    fun tv_4_filme() = shoot("tv_4_filme", setup = { it.tab = Tab.MOVIES }, after = { focusOn("Neonstadt") })
+    fun tv_4_filme() = shoot("tv_4_filme", setup = { vm ->
+        vm.tab = Tab.MOVIES
+        vm.readyCatalog(Kind.MOVIE)?.streams?.get(5)?.let { runBlocking { vm.vodInfo(it) } }
+    }, after = { focusOn("Neonstadt") })
 
     @Test
     @Config(qualifiers = TV)
@@ -108,7 +119,10 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = TV)
     fun tv_6_film_detail() = shoot("tv_6_film_detail", setup = { vm ->
-        vm.readyCatalog(Kind.MOVIE)?.streams?.get(5)?.let { vm.open(Screen.Movie(it)) }
+        vm.readyCatalog(Kind.MOVIE)?.streams?.get(5)?.let {
+            runBlocking { vm.vodInfo(it) }
+            vm.open(Screen.Movie(it))
+        }
     })
 
     @Test
@@ -160,7 +174,10 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = PHONE)
     fun phone_4_film_detail() = shoot("phone_4_film_detail", setup = { vm ->
-        vm.readyCatalog(Kind.MOVIE)?.streams?.get(5)?.let { vm.open(Screen.Movie(it)) }
+        vm.readyCatalog(Kind.MOVIE)?.streams?.get(5)?.let {
+            runBlocking { vm.vodInfo(it) }
+            vm.open(Screen.Movie(it))
+        }
     })
 
     @Test

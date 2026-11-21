@@ -266,7 +266,7 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
                     }
                 }
                 LazyVerticalGrid(
-                    GridCells.Adaptive(132.dp),
+                    GridCells.Adaptive(112.dp),
                     Modifier.weight(1f).fillMaxWidth(),
                     contentPadding = PaddingValues(start = 28.dp, end = 32.dp, top = 8.dp, bottom = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(18.dp),

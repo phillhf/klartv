@@ -114,7 +114,7 @@ fun spotFor(vm: AppViewModel, s: Stream): Spot {
             info?.year ?: s.year,
             info?.genre ?: s.genre,
             info?.duration,
-            (info?.rating ?: s.rating)?.let { "★ $it" },
+            (info?.rating ?: s.rating)?.let { "★ $it" },
         ),
         plot = info?.plot ?: s.plot,
         backdrop = backdrop ?: info?.cover ?: s.logo,
@@ -178,7 +178,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                     subtitle = metaLine(tile.entry.subtitle, minutesLeft(tile.entry.position, tile.entry.duration)),
                     image = tile.entry.image,
                     progress = tile.entry.progress,
-                    modifier = Modifier.width(if (wide) 300.dp else 250.dp),
+                    modifier = Modifier.width(if (wide) 236.dp else 236.dp),
                     onFocused = { onFocusTile(tile) },
                 ) { vm.playContinue(context, tile.entry) }
                 is Tile.Item -> {
@@ -189,7 +189,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                             title = s.name,
                             subtitle = metaLine(kindLabel(s.kind), s.year, s.genre),
                             image = wideImage(vm, s),
-                            modifier = Modifier.width(if (wide) 300.dp else 250.dp),
+                            modifier = Modifier.width(236.dp),
                             onFocused = { vm.focus(s); onFocusTile(tile) },
                             onClick = open,
                         )
@@ -198,7 +198,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                             image = s.logo,
                             rating = s.rating,
                             progress = vm.progress(s.key),
-                            modifier = Modifier.width(if (wide) 140.dp else 116.dp),
+                            modifier = Modifier.width(if (wide) 124.dp else 112.dp),
                             onFocused = { vm.focus(s); onFocusTile(tile) },
                             onClick = open,
                         )
@@ -208,7 +208,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                                 name = s.name,
                                 logo = s.logo,
                                 now = currentAndNext(vm.nowEpg[s.id].orEmpty()).first,
-                                modifier = Modifier.width(if (wide) 230.dp else 190.dp),
+                                modifier = Modifier.width(if (wide) 200.dp else 180.dp),
                                 onFocused = { onFocusTile(tile) },
                                 onClick = open,
                             )
@@ -260,7 +260,7 @@ private fun StartWide(vm: AppViewModel, featured: List<Stream>, shelves: List<Sh
     val spot = focusedTile?.let { spotFor(vm, it) } ?: featured.getOrNull(heroIndex)?.let { spotFor(vm, it) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val spotHeight = (maxHeight * 0.44f).coerceAtLeast(190.dp)
+        val spotHeight = (maxHeight * 0.40f).coerceAtLeast(180.dp)
         Crossfade(targetState = spot?.backdrop to (spot?.isCover == true), animationSpec = tween(450), label = "Hintergrund") { (url, cover) ->
             Backdrop(url, isCover = cover)
         }
