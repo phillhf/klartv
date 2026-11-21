@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.input.InputMode
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -72,6 +75,9 @@ class ScreenshotTest {
         val vm = demoViewModel()
         compose.setContent {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalAsyncImagePreviewHandler provides FakeImages) {
+                // Wie mit Fernbedienung: nur dann gibt es Fokus
+                val inputMode = LocalInputModeManager.current
+                SideEffect { inputMode.requestInputMode(InputMode.Keyboard) }
                 KlarTheme { App(vm) }
             }
         }
@@ -86,9 +92,6 @@ class ScreenshotTest {
 
     @OptIn(ExperimentalTestApi::class)
     private fun focusOn(description: String, index: Int = 0) {
-        // Erst auf Tastatur-/Fernbedienungsmodus schalten, im Touch-Modus gibt es keinen Fokus
-        compose.onRoot().performKeyInput { pressKey(Key.DirectionDown) }
-        compose.waitForIdle()
         compose.onAllNodesWithContentDescription(description)[index]
             .performSemanticsAction(SemanticsActions.RequestFocus)
     }

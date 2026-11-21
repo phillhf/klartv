@@ -178,7 +178,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                     subtitle = metaLine(tile.entry.subtitle, minutesLeft(tile.entry.position, tile.entry.duration)),
                     image = tile.entry.image,
                     progress = tile.entry.progress,
-                    modifier = Modifier.width(if (wide) 236.dp else 236.dp),
+                    modifier = Modifier.width(if (wide) 212.dp else 236.dp),
                     onFocused = { onFocusTile(tile) },
                 ) { vm.playContinue(context, tile.entry) }
                 is Tile.Item -> {
@@ -189,7 +189,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                             title = s.name,
                             subtitle = metaLine(kindLabel(s.kind), s.year, s.genre),
                             image = wideImage(vm, s),
-                            modifier = Modifier.width(236.dp),
+                            modifier = Modifier.width(if (wide) 212.dp else 236.dp),
                             onFocused = { vm.focus(s); onFocusTile(tile) },
                             onClick = open,
                         )
