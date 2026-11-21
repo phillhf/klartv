@@ -23,8 +23,26 @@ jobs:
       # Prüft auch die Prüfsumme der gradle-wrapper.jar
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Tests
-        run: ./gradlew testDebugUnitTest
+      # Alle Tests; die Screenshot-Tests speichern dabei die Bildschirme als PNG
+      - name: Tests und Screenshots
+        run: ./gradlew recordRoborazziDebug
+
+      - name: Testbericht hochladen
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: testbericht
+          path: app/build/reports/tests/
+          retention-days: 3
+
+      - name: Screenshots hochladen
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: screenshots
+          path: app/build/screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Debug-APK bauen
         run: ./gradlew assembleDebug

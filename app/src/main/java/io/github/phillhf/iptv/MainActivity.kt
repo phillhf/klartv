@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(vm: AppViewModel = viewModel()) {
+internal fun App(vm: AppViewModel = viewModel()) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize().safeDrawingPadding()) {
             if (vm.active == null) {

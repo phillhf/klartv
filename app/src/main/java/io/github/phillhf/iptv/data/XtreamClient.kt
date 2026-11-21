@@ -85,6 +85,7 @@ class XtreamClient(server: String, private val username: String, private val pas
                         url = streamUrl("movie", id, o.optStringOrNull("container_extension") ?: "mp4"),
                         rating = o.optStringOrNull("rating")?.takeIf { it != "0" },
                         year = yearOf(o.optStringOrNull("year") ?: o.optStringOrNull("releasedate")),
+                        added = o.optStringOrNull("added")?.toLongOrNull() ?: 0,
                     )
                 }
                 Kind.SERIES -> {
@@ -97,6 +98,7 @@ class XtreamClient(server: String, private val username: String, private val pas
                         backdrop = o.backdrop(),
                         genre = o.optStringOrNull("genre"),
                         year = yearOf(o.optStringOrNull("releaseDate") ?: o.optStringOrNull("release_date") ?: o.optStringOrNull("year")),
+                        added = o.optStringOrNull("last_modified")?.toLongOrNull() ?: 0,
                     )
                 }
             }

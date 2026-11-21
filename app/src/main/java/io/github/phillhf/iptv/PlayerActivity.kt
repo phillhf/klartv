@@ -4,42 +4,34 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.TypedValue
-import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.extractor.DefaultExtractorsFactory
-import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.ui.PlayerView
+import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.EpgEntry
-import io.github.phillhf.iptv.data.Http
+import io.github.phillhf.iptv.ui.KlarTheme
+import io.github.phillhf.iptv.ui.PlayerOverlay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Vollbild-Player. Die ganze Liste (Sender einer Kategorie, Folgen einer Staffel) liegt als Playlist im
@@ -49,17 +41,20 @@ import java.util.Locale
 class PlayerActivity : ComponentActivity() {
     private var player: ExoPlayer? = null
     private lateinit var playerView: PlayerView
-    private lateinit var info: TextView
     private var items: List<PlayItem> = emptyList()
     private var currentIndex = 0
     private var retries = 0
     private var epgJob: Job? = null
     private val handler = Handler(Looper.getMainLooper())
-    private val time = SimpleDateFormat("HH:mm", Locale.GERMANY)
 
-    private val hideInfo = Runnable {
-        if (!playerView.isControllerFullyVisible) info.visibility = View.GONE
-    }
+    // Zustand der Senderinfo unten im Bild
+    private var overlayItem by mutableStateOf<PlayItem?>(null)
+    private var overlayEpg by mutableStateOf<List<EpgEntry>>(emptyList())
+    private var overlayVisible by mutableStateOf(false)
+    private var message by mutableStateOf<String?>(null)
+
+    private val hideOverlay = Runnable { overlayVisible = false }
+    private val hideMessage = Runnable { message = null }
 
     private val saveTick = object : Runnable {
         override fun run() {
@@ -88,23 +83,26 @@ class PlayerActivity : ComponentActivity() {
             setShowSubtitleButton(true)
             setControllerVisibilityListener(
                 PlayerView.ControllerVisibilityListener { visibility ->
-                    if (visibility == View.VISIBLE) showInfo(autoHide = false) else info.visibility = View.GONE
+                    // Leiste des Players und Senderinfo nicht übereinander zeigen
+                    if (visibility == View.VISIBLE) overlayVisible = false
                 },
             )
         }
-        info = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            setBackgroundColor(0xB3000000.toInt())
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-            visibility = View.GONE
+        val overlay = ComposeView(this).apply {
+            setContent {
+                KlarTheme {
+                    PlayerOverlay(
+                        item = overlayItem,
+                        epg = overlayEpg,
+                        visible = overlayVisible,
+                        message = message,
+                    )
+                }
+            }
         }
-        root.addView(playerView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        root.addView(
-            info,
-            FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START)
-                .apply { setMargins(dp(24), dp(24), dp(24), dp(24)) },
-        )
+        val match = ViewGroup.LayoutParams.MATCH_PARENT
+        root.addView(playerView, FrameLayout.LayoutParams(match, match))
+        root.addView(overlay, FrameLayout.LayoutParams(match, match))
         setContentView(root)
 
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -131,20 +129,7 @@ class PlayerActivity : ComponentActivity() {
 
     private fun initPlayer() {
         if (player != null) return
-        val http = DefaultHttpDataSource.Factory()
-            .setUserAgent(Http.USER_AGENT)
-            .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(30_000)
-        // Viele IPTV-Streams beginnen nicht mit einem Schlüsselbild; ohne diese Schalter bleibt das Bild schwarz
-        val extractors = DefaultExtractorsFactory().setTsExtractorFlags(
-            DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS,
-        )
-        val p = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this, http), extractors))
-            .setAudioAttributes(AudioAttributes.DEFAULT, true)
-            .setHandleAudioBecomingNoisy(true)
-            .build()
+        val p = Players.create(this)
         p.addListener(listener)
         val index = currentIndex.coerceIn(items.indices)
         val item = items[index]
@@ -169,15 +154,6 @@ class PlayerActivity : ComponentActivity() {
         if (::playerView.isInitialized) playerView.player = null
     }
 
-    private fun PlayItem.toMediaItem(): MediaItem {
-        val builder = MediaItem.Builder()
-            .setUri(url)
-            .setMediaId(key)
-            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
-        if (url.contains(".m3u8", ignoreCase = true)) builder.setMimeType(MimeTypes.APPLICATION_M3U8)
-        return builder.build()
-    }
-
     private fun current(): PlayItem? = items.getOrNull(player?.currentMediaItemIndex ?: currentIndex)
 
     private val listener = object : Player.Listener {
@@ -185,13 +161,21 @@ class PlayerActivity : ComponentActivity() {
             retries = 0
             current()?.let {
                 PlaybackQueue.onPlay?.invoke(it)
-                showInfo(autoHide = true)
+                showOverlay(it)
             }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (playbackState == Player.STATE_READY) retries = 0
-            if (playbackState == Player.STATE_ENDED) current()?.let { PlaybackQueue.library?.clearPosition(it.key) }
+            if (playbackState == Player.STATE_READY) {
+                retries = 0
+                message = null
+            }
+            if (playbackState == Player.STATE_ENDED) {
+                current()?.let {
+                    PlaybackQueue.library?.clearPosition(it.key)
+                    PlaybackQueue.library?.removeContinue(it.key)
+                }
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -208,7 +192,7 @@ class PlayerActivity : ComponentActivity() {
                 }, 1500L * retries)
             } else {
                 showMessage(
-                    "Wiedergabe nicht möglich (${error.errorCodeName}).\n" +
+                    "Wiedergabe nicht möglich (${error.errorCodeName}). " +
                         "Anderen Eintrag wählen oder Play drücken, um es erneut zu versuchen.",
                     autoHide = false,
                 )
@@ -217,15 +201,17 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private fun showMessage(text: String, autoHide: Boolean) {
-        info.text = text
-        info.visibility = View.VISIBLE
-        handler.removeCallbacks(hideInfo)
-        if (autoHide) handler.postDelayed(hideInfo, 5_000)
+        message = text
+        handler.removeCallbacks(hideMessage)
+        if (autoHide) handler.postDelayed(hideMessage, 6_000)
     }
 
-    private fun showInfo(autoHide: Boolean) {
-        val item = current() ?: return
-        showMessage(listOfNotNull(item.title, item.subtitle).joinToString("\n"), autoHide)
+    private fun showOverlay(item: PlayItem) {
+        if (overlayItem?.key != item.key) overlayEpg = emptyList()
+        overlayItem = item
+        overlayVisible = true
+        handler.removeCallbacks(hideOverlay)
+        handler.postDelayed(hideOverlay, 5_000)
         if (item.live) loadEpg(item)
     }
 
@@ -240,33 +226,26 @@ class PlayerActivity : ComponentActivity() {
             } catch (e: Exception) {
                 emptyList()
             }
-            if (current()?.key != item.key || info.visibility != View.VISIBLE) return@launch
-            val now = System.currentTimeMillis()
-            val text = StringBuilder(item.title)
-            val index = list.indexOfFirst { now >= it.start && now < it.end }
-            if (index >= 0) {
-                text.append("\nJetzt: ").append(format(list[index]))
-                list.getOrNull(index + 1)?.let { text.append("\nDanach: ").append(format(it)) }
-            } else {
-                list.firstOrNull { it.start > now }?.let { text.append("\nDemnächst: ").append(format(it)) }
-            }
-            info.text = text
+            if (overlayItem?.key == item.key) overlayEpg = list
         }
     }
-
-    private fun format(e: EpgEntry) = "${time.format(Date(e.start))}–${time.format(Date(e.end))}  ${e.title}"
 
     /** Fernbedienung: Bei Live-TV schalten Hoch/Runter und die Kanaltasten um, solange die Leiste zu ist. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val p = player
-        if (p != null && event.action == KeyEvent.ACTION_DOWN && current()?.live == true && !playerView.isControllerFullyVisible) {
+        val item = current()
+        if (p != null && item != null && event.action == KeyEvent.ACTION_DOWN && !playerView.isControllerFullyVisible) {
             when (event.keyCode) {
-                KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_DPAD_UP -> {
+                KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_DPAD_UP -> if (item.live) {
                     if (p.hasNextMediaItem()) p.seekToNextMediaItem()
                     return true
                 }
-                KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_DPAD_DOWN -> if (item.live) {
                     if (p.hasPreviousMediaItem()) p.seekToPreviousMediaItem()
+                    return true
+                }
+                KeyEvent.KEYCODE_INFO, KeyEvent.KEYCODE_GUIDE -> {
+                    showOverlay(item)
                     return true
                 }
             }
@@ -283,10 +262,25 @@ class PlayerActivity : ComponentActivity() {
         val duration = p.duration
         val position = p.currentPosition
         when {
-            duration > 0 && position > duration - 60_000 -> lib.clearPosition(item.key)
-            position > 5_000 -> lib.savePosition(item.key, position)
+            duration > 0 && position > duration - 60_000 -> {
+                lib.clearPosition(item.key)
+                lib.removeContinue(item.key)
+            }
+            position > 5_000 -> {
+                lib.savePosition(item.key, position)
+                lib.updateContinue(
+                    ContinueEntry(
+                        key = item.key,
+                        parentKey = item.recentKey,
+                        title = item.title,
+                        subtitle = item.subtitle,
+                        image = item.image,
+                        url = item.url,
+                        position = position,
+                        duration = duration.coerceAtLeast(0),
+                    ),
+                )
+            }
         }
     }
-
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

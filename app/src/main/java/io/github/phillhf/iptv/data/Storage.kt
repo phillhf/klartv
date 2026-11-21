@@ -55,6 +55,11 @@ class AccountStore(context: Context) {
     var liveFormat: String
         get() = prefs.getString("live_format", "ts") ?: "ts"
         set(value) = prefs.edit().putString("live_format", value).apply()
+
+    /** Live-Vorschau des gewählten Senders in der Senderliste (TV und Tablet). */
+    var livePreview: Boolean
+        get() = prefs.getBoolean("live_preview", true)
+        set(value) = prefs.edit().putBoolean("live_preview", value).apply()
 }
 
 /** Favoriten, zuletzt gesehen und Wiedergabepositionen, getrennt pro Konto. */
@@ -75,6 +80,44 @@ class Library(context: Context, accountId: String) {
     fun addRecent(key: String) {
         val list = (listOf(key) + recent().filter { it != key }).take(40)
         prefs.edit().putString("recent", list.joinToString("\n")).apply()
+    }
+
+    fun continueList(): List<ContinueEntry> = runCatching {
+        val arr = JSONArray(prefs.getString("continue", "[]"))
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            ContinueEntry(
+                key = o.getString("key"),
+                parentKey = o.getString("parent"),
+                title = o.getString("title"),
+                subtitle = o.optString("subtitle").takeIf { it.isNotBlank() },
+                image = o.optString("image").takeIf { it.isNotBlank() },
+                url = o.getString("url"),
+                position = o.optLong("pos"),
+                duration = o.optLong("dur"),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    /** Setzt den Eintrag nach vorn; pro Film oder Serie gibt es nur einen. */
+    fun updateContinue(entry: ContinueEntry) {
+        saveContinue(listOf(entry) + continueList().filter { it.parentKey != entry.parentKey })
+    }
+
+    fun removeContinue(key: String) {
+        saveContinue(continueList().filter { it.key != key })
+    }
+
+    private fun saveContinue(list: List<ContinueEntry>) {
+        val arr = JSONArray()
+        list.take(25).forEach {
+            arr.put(
+                JSONObject().put("key", it.key).put("parent", it.parentKey).put("title", it.title)
+                    .put("subtitle", it.subtitle ?: "").put("image", it.image ?: "").put("url", it.url)
+                    .put("pos", it.position).put("dur", it.duration),
+            )
+        }
+        prefs.edit().putString("continue", arr.toString()).apply()
     }
 
     fun position(key: String): Long = prefs.getLong("pos:$key", 0L)

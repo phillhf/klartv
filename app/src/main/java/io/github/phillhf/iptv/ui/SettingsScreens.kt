@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,10 +69,11 @@ fun SettingsScreen(vm: AppViewModel) {
     val shape = RoundedCornerShape(10.dp)
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 24.dp).widthIn(max = 760.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Anbieter", style = MaterialTheme.typography.titleLarge)
+        Text("Einstellungen", style = MaterialTheme.typography.headlineMedium)
+        Text("Anbieter", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
         vm.accounts.forEach { a ->
             Row(
                 Modifier.fillMaxWidth().focusRing(shape).clip(shape).clickable { vm.select(a) }.padding(8.dp),
@@ -128,6 +130,20 @@ fun SettingsScreen(vm: AppViewModel) {
                 label = { Text("HLS (m3u8)") },
                 modifier = Modifier.focusRing(),
             )
+        }
+        Row(
+            Modifier.fillMaxWidth().focusRing(shape).clip(shape).clickable { vm.updateLivePreview(!vm.livePreview) }.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Live-Vorschau")
+                Text(
+                    "Spielt den gewählten Sender in der Senderliste klein ab (TV und Tablet). Ausschalten, wenn dein Anbieter nur eine Verbindung erlaubt und es hakt.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(checked = vm.livePreview, onCheckedChange = null, modifier = Modifier.padding(start = 12.dp))
         }
         OutlinedButton(onClick = { vm.reload() }, modifier = Modifier.focusRing(Pill)) {
             Icon(Icons.Filled.Refresh, contentDescription = null)

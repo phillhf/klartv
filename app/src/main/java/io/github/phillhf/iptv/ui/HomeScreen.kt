@@ -1,28 +1,36 @@
 package io.github.phillhf.iptv.ui
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
@@ -34,11 +42,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,20 +56,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
+import io.github.phillhf.iptv.R
 import io.github.phillhf.iptv.Screen
 import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
-import io.github.phillhf.iptv.data.Stream
-import io.github.phillhf.iptv.toPlayItem
 
 enum class Tab(val label: String, val icon: ImageVector) {
+    START("Start", Icons.Filled.Home),
     LIVE("Live-TV", Icons.Filled.LiveTv),
     MOVIES("Filme", Icons.Filled.Movie),
     SERIES("Serien", Icons.Filled.VideoLibrary),
@@ -71,132 +81,207 @@ enum class Tab(val label: String, val icon: ImageVector) {
     SETTINGS("Einstellungen", Icons.Filled.Settings),
 }
 
+/** Auf dem Handy passen nicht alle Bereiche in die Leiste; Favoriten und Einstellungen sind oben auf „Start“. */
+private val PhoneTabs = listOf(Tab.START, Tab.LIVE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH)
+
+private val NavCollapsed = 84.dp
+
 @Composable
 fun HomeScreen(vm: AppViewModel) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 600.dp
         if (wide) {
-            Row(Modifier.fillMaxSize()) {
-                NavigationRail {
-                    Tab.entries.forEach { t ->
-                        NavigationRailItem(
-                            selected = vm.tab == t,
-                            onClick = { vm.tab = t },
-                            icon = { Icon(t.icon, contentDescription = null) },
-                            label = { Text(t.label, maxLines = 1) },
-                        )
-                    }
-                }
-                Box(Modifier.weight(1f).fillMaxHeight()) { TabContent(vm, wide = true) }
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize().padding(start = NavCollapsed)) { TabContent(vm, wide = true) }
+                SideNav(vm.tab, { vm.tab = it }, Modifier.align(Alignment.CenterStart))
             }
         } else {
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxWidth()) { TabContent(vm, wide = false) }
-                NavigationBar {
-                    Tab.entries.forEach { t ->
+                NavigationBar(containerColor = Klar.Surface) {
+                    PhoneTabs.forEach { t ->
                         NavigationBarItem(
                             selected = vm.tab == t,
                             onClick = { vm.tab = t },
                             icon = { Icon(t.icon, contentDescription = t.label) },
                             label = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            alwaysShowLabel = false,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color(0xFF02131D),
+                                indicatorColor = Klar.Accent,
+                                unselectedIconColor = Klar.TextDim,
+                                unselectedTextColor = Klar.TextDim,
+                                selectedTextColor = Klar.Text,
+                            ),
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Seitenleiste für TV und Tablet: schmal mit Symbolen, klappt mit Beschriftung auf, sobald die
+ * Fernbedienung sie ansteuert, und legt sich dabei über den Inhalt.
+ */
+@Composable
+private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val width by animateDpAsState(if (expanded) 250.dp else NavCollapsed, label = "Seitenleiste")
+    Column(
+        modifier
+            .fillMaxHeight()
+            .width(width)
+            .background(
+                if (expanded) {
+                    Brush.horizontalGradient(listOf(Klar.Bg, Klar.Bg.copy(alpha = 0.97f), Klar.Bg.copy(alpha = 0.9f)))
+                } else {
+                    Brush.horizontalGradient(listOf(Klar.Bg, Klar.Bg.copy(alpha = 0.85f)))
+                },
+            )
+            .onFocusChanged { expanded = it.hasFocus }
+            .padding(horizontal = 14.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(Modifier.padding(start = 6.dp, bottom = 28.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(44.dp))
+            AnimatedVisibility(expanded, enter = fadeIn(), exit = fadeOut()) {
+                Row(Modifier.padding(start = 6.dp)) {
+                    Text("Klar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    Text(" TV", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Klar.Accent)
+                }
+            }
+        }
+        Tab.entries.forEach { t ->
+            if (t == Tab.SETTINGS) Spacer(Modifier.weight(1f))
+            NavItem(t, t == selected, expanded) { onSelect(t) }
+        }
+    }
+}
+
+@Composable
+private fun NavItem(tab: Tab, selected: Boolean, expanded: Boolean, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val bg = when {
+        focused -> Klar.Accent
+        selected -> Klar.Accent.copy(alpha = 0.16f)
+        else -> Color.Transparent
+    }
+    val fg = when {
+        focused -> Color(0xFF02131D)
+        selected -> Klar.Accent
+        else -> Klar.TextDim
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .onFocusChanged { focused = it.isFocused }
+            .clip(Pill)
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(tab.icon, contentDescription = tab.label, tint = fg)
+        if (expanded) {
+            Text(
+                tab.label,
+                color = if (focused) fg else Klar.Text,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                modifier = Modifier.padding(start = 16.dp),
+            )
         }
     }
 }
 
 @Composable
 private fun TabContent(vm: AppViewModel, wide: Boolean) {
-    when (vm.tab) {
-        Tab.LIVE -> BrowseScreen(vm, Kind.LIVE, wide)
-        Tab.MOVIES -> BrowseScreen(vm, Kind.MOVIE, wide)
-        Tab.SERIES -> BrowseScreen(vm, Kind.SERIES, wide)
-        Tab.FAVORITES -> FavoritesScreen(vm)
-        Tab.SEARCH -> SearchScreen(vm)
-        Tab.SETTINGS -> SettingsScreen(vm)
+    Crossfade(targetState = vm.tab, animationSpec = tween(220), label = "Bereich") { tab ->
+        when (tab) {
+            Tab.START -> StartScreen(vm, wide)
+            Tab.LIVE -> LiveScreen(vm, wide)
+            Tab.MOVIES -> MediaScreen(vm, Kind.MOVIE, wide)
+            Tab.SERIES -> MediaScreen(vm, Kind.SERIES, wide)
+            Tab.FAVORITES -> FavoritesScreen(vm, wide)
+            Tab.SEARCH -> SearchScreen(vm, wide)
+            Tab.SETTINGS -> SettingsScreen(vm)
+        }
     }
 }
 
 @Composable
-private fun BrowseScreen(vm: AppViewModel, kind: Kind, wide: Boolean) {
+private fun MediaScreen(vm: AppViewModel, kind: Kind, wide: Boolean) {
     LaunchedEffect(kind, vm.active?.id) { vm.ensureLoaded(kind) }
     when (val state = vm.catalog(kind)) {
-        Load.Idle, Load.Loading -> LoadingBox()
+        Load.Idle, Load.Loading -> LoadingBox(if (kind == Kind.MOVIE) "Lade Filme …" else "Lade Serien …")
         is Load.Error -> ErrorBox(state.message) { vm.ensureLoaded(kind, force = true) }
-        is Load.Ready -> CatalogView(vm, kind, state.value, wide)
+        is Load.Ready -> when {
+            state.value.streams.isEmpty() -> Centered { Text("Dein Anbieter hat hier keine Inhalte.") }
+            wide -> MediaWide(vm, kind, state.value)
+            else -> MediaPhone(vm, kind, state.value)
+        }
     }
 }
 
-@Composable
-private fun CatalogView(vm: AppViewModel, kind: Kind, catalog: Catalog, wide: Boolean) {
-    if (catalog.streams.isEmpty()) {
-        Centered { Text("Dein Anbieter hat hier keine Inhalte.") }
-        return
-    }
-    val selected = vm.lastCategory[kind]
-    val choose: (String?) -> Unit = { id -> if (id == null) vm.lastCategory.remove(kind) else vm.lastCategory[kind] = id }
-    if (wide && kind != Kind.LIVE) {
-        MediaView(vm, kind, catalog, selected ?: Catalog.ALL, choose)
-    } else if (wide) {
-        val current = selected ?: Catalog.ALL
-        Row(Modifier.fillMaxSize()) {
-            CategoryList(catalog, current, Modifier.width(260.dp).fillMaxHeight(), choose)
-            VerticalDivider()
-            Items(vm, kind, catalog, current, Modifier.weight(1f).fillMaxHeight())
-        }
-    } else if (selected == null) {
-        CategoryList(catalog, null, Modifier.fillMaxSize(), choose)
-    } else {
-        BackHandler { choose(null) }
-        Column(Modifier.fillMaxSize()) {
-            TitleBar(catalog.categories.firstOrNull { it.id == selected }?.name ?: "") { choose(null) }
-            Items(vm, kind, catalog, selected, Modifier.weight(1f).fillMaxWidth())
-        }
-    }
-}
+private fun openScreen(kind: Kind, s: io.github.phillhf.iptv.data.Stream) =
+    if (kind == Kind.MOVIE) Screen.Movie(s) else Screen.Series(s)
 
 /**
- * Mediacenter-Ansicht für Filme und Serien auf TV und Tablet: Hintergrundbild und Infobereich zum Titel
- * unter dem Fokus, darunter das Cover-Raster, links die Kategorien.
+ * Mediacenter-Ansicht: Hintergrundbild und Infobereich zum Titel unter dem Fokus, darunter das
+ * Cover-Raster, links die Kategorien.
  */
 @Composable
-private fun MediaView(vm: AppViewModel, kind: Kind, catalog: Catalog, current: String, choose: (String?) -> Unit) {
+private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
+    val current = vm.lastCategory[kind] ?: Catalog.ALL
     val list = remember(catalog, current) { catalog.inCategory(current) }
     val item = vm.focused?.takeIf { it.kind == kind } ?: list.firstOrNull()
-    val info = item?.let { if (kind == Kind.MOVIE) vm.cachedVodInfo(it) else null }
-    val backdrop = info?.backdrop ?: item?.backdrop
-    val bg = MaterialTheme.colorScheme.background
-    Box(Modifier.fillMaxSize()) {
-        Backdrop(backdrop ?: info?.cover ?: item?.logo, isCover = backdrop == null)
+    val spot = item?.let { spotFor(vm, it) }
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val infoHeight = (maxHeight * 0.36f).coerceAtLeast(170.dp)
+        Crossfade(targetState = spot?.backdrop to (spot?.isCover == true), animationSpec = tween(450), label = "Hintergrund") { (url, cover) ->
+            Backdrop(url, isCover = cover)
+        }
         Row(Modifier.fillMaxSize()) {
-            CategoryList(catalog, current, Modifier.width(240.dp).fillMaxHeight().background(bg.copy(alpha = 0.75f))) { choose(it) }
+            CategoryRail(
+                catalog.categories,
+                current,
+                { catalog.inCategory(it).size },
+                Modifier.width(240.dp).fillMaxHeight().background(Klar.Bg.copy(alpha = 0.6f)),
+            ) { vm.lastCategory[kind] = it }
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                if (item != null) {
-                    HeroInfo(
-                        title = item.name,
-                        meta = metaLine(
-                            info?.year ?: item.year,
-                            info?.genre ?: item.genre,
-                            info?.duration,
-                            (info?.rating ?: item.rating)?.let { "★ $it" },
-                        ),
-                        plot = info?.plot ?: item.plot,
-                        plotLines = 3,
-                        modifier = Modifier.fillMaxWidth().height(170.dp).padding(start = 24.dp, end = 24.dp, top = 20.dp),
-                    )
+                Crossfade(targetState = spot, animationSpec = tween(250), label = "Info") { s ->
+                    if (s != null) {
+                        HeroInfo(
+                            s.title,
+                            s.meta,
+                            s.plot,
+                            Modifier.fillMaxWidth().height(infoHeight).padding(start = 32.dp, end = 48.dp, top = 32.dp).widthIn(max = 760.dp),
+                            plotLines = 3,
+                        )
+                    } else {
+                        Spacer(Modifier.height(infoHeight))
+                    }
                 }
                 LazyVerticalGrid(
-                    GridCells.Adaptive(116.dp),
+                    GridCells.Adaptive(132.dp),
                     Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(start = 28.dp, end = 32.dp, top = 8.dp, bottom = 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     items(list) { s ->
-                        PosterCard(s.name, s.logo, onFocused = { vm.focus(s) }) {
+                        PosterCard(
+                            title = s.name,
+                            image = s.logo,
+                            rating = s.rating,
+                            progress = vm.progress(s.key),
+                            onFocused = { vm.focus(s) },
+                        ) {
                             vm.focus(s)
-                            vm.open(if (kind == Kind.MOVIE) Screen.Movie(s) else Screen.Series(s))
+                            vm.open(openScreen(kind, s))
                         }
                     }
                 }
@@ -206,57 +291,27 @@ private fun MediaView(vm: AppViewModel, kind: Kind, catalog: Catalog, current: S
 }
 
 @Composable
-private fun CategoryList(catalog: Catalog, selected: String?, modifier: Modifier, onSelect: (String) -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
-    LazyColumn(modifier, contentPadding = PaddingValues(vertical = 8.dp)) {
-        items(catalog.categories) { c ->
-            val isSelected = c.id == selected
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .focusRing(shape)
-                    .clip(shape)
-                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .clickable { onSelect(c.id) }
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(c.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(
-                    catalog.inCategory(c.id).size.toString(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Items(vm: AppViewModel, kind: Kind, catalog: Catalog, categoryId: String, modifier: Modifier) {
-    val list = remember(catalog, categoryId) { catalog.inCategory(categoryId) }
-    val context = LocalContext.current
-    if (kind == Kind.LIVE) {
-        LazyColumn(modifier, contentPadding = PaddingValues(vertical = 8.dp)) {
-            itemsIndexed(list) { i, s ->
-                StreamRow(
-                    title = s.name,
-                    subtitle = null,
-                    image = s.logo,
-                    leading = (i + 1).toString(),
-                    favorite = s.key in vm.favorites,
-                    onClick = { vm.play(context, list.map { it.toPlayItem() }, i) },
-                    onFavorite = { vm.toggleFavorite(s) },
-                )
-            }
-        }
-    } else {
-        LazyVerticalGrid(GridCells.Adaptive(130.dp), modifier, contentPadding = PaddingValues(8.dp)) {
+private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
+    val current = vm.lastCategory[kind] ?: Catalog.ALL
+    val list = remember(catalog, current) { catalog.inCategory(current) }
+    Column(Modifier.fillMaxSize()) {
+        Text(
+            if (kind == Kind.MOVIE) "Filme" else "Serien",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp),
+        )
+        CategoryChips(catalog.categories, current, { vm.lastCategory[kind] = it })
+        LazyVerticalGrid(
+            GridCells.Adaptive(108.dp),
+            Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             items(list) { s ->
-                PosterCard(s.name, s.logo) {
-                    vm.open(if (kind == Kind.MOVIE) Screen.Movie(s) else Screen.Series(s))
+                PosterCard(title = s.name, image = s.logo, rating = s.rating, progress = vm.progress(s.key)) {
+                    vm.focus(s)
+                    vm.open(openScreen(kind, s))
                 }
             }
         }
@@ -264,94 +319,87 @@ private fun Items(vm: AppViewModel, kind: Kind, catalog: Catalog, categoryId: St
 }
 
 @Composable
-private fun FavoritesScreen(vm: AppViewModel) {
+private fun FavoritesScreen(vm: AppViewModel, wide: Boolean) {
     LaunchedEffect(vm.active?.id) { Kind.entries.forEach { vm.ensureLoaded(it) } }
     val loading = Kind.entries.any { vm.catalog(it) is Load.Loading }
-    val recent = vm.recent.mapNotNull { vm.findStream(it) }
-    val favorites = Kind.entries.associateWith { k ->
-        vm.readyCatalog(k)?.streams?.filter { it.key in vm.favorites }.orEmpty()
+    val shelves = buildList {
+        if (vm.continueList.isNotEmpty()) add(ShelfData("Weiterschauen", ShelfStyle.WIDE, vm.continueList.map { Tile.Resume(it) }))
+        fun favs(kind: Kind) = vm.readyCatalog(kind)?.streams.orEmpty().filter { it.key in vm.favorites }.map { Tile.Item(it) }
+        favs(Kind.LIVE).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Sender", ShelfStyle.CHANNEL, it)) }
+        favs(Kind.MOVIE).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Filme", ShelfStyle.POSTER, it)) }
+        favs(Kind.SERIES).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Serien", ShelfStyle.POSTER, it)) }
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
-        if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) }
-        section(vm, "Zuletzt gesehen", recent)
-        section(vm, "Live-TV", favorites.getValue(Kind.LIVE))
-        section(vm, "Filme", favorites.getValue(Kind.MOVIE))
-        section(vm, "Serien", favorites.getValue(Kind.SERIES))
-        if (!loading && recent.isEmpty() && favorites.values.all { it.isEmpty() }) {
+    val side = if (wide) 48.dp else 16.dp
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 24.dp, bottom = 32.dp)) {
+        item { Text("Favoriten", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = side, bottom = 16.dp)) }
+        if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = side), color = Klar.Accent) }
+        items(shelves) { ShelfView(vm, it, side, wide) {} }
+        if (!loading && shelves.isEmpty()) {
             item {
                 Text(
-                    "Noch keine Favoriten. Tippe bei einem Sender auf den Stern oder öffne einen Film und wähle „Zu Favoriten“.",
-                    modifier = Modifier.padding(24.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "Noch nichts gemerkt. Markiere Sender mit dem Stern oder wähle bei Filmen und Serien „Zu Favoriten“.",
+                    modifier = Modifier.padding(horizontal = side, vertical = 24.dp),
+                    color = Klar.TextDim,
                 )
             }
         }
-    }
-}
-
-private fun LazyListScope.section(vm: AppViewModel, title: String, list: List<Stream>) {
-    if (list.isEmpty()) return
-    item {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-        )
-    }
-    items(list) { s ->
-        val context = LocalContext.current
-        StreamRow(
-            title = s.name,
-            subtitle = kindLabel(s.kind),
-            image = s.logo,
-            favorite = s.key in vm.favorites,
-            onClick = { vm.openStream(context, s, list) },
-            onFavorite = { vm.toggleFavorite(s) },
-        )
     }
 }
 
 @Composable
-private fun SearchScreen(vm: AppViewModel) {
+private fun SearchScreen(vm: AppViewModel, wide: Boolean) {
     LaunchedEffect(vm.active?.id) { Kind.entries.forEach { vm.ensureLoaded(it) } }
     var query by rememberSaveable { mutableStateOf("") }
-    val context = LocalContext.current
     val catalogs = Kind.entries.map { vm.readyCatalog(it) }
-    val results = remember(query, catalogs) {
-        val q = query.trim()
+    val q = query.trim()
+    val results = remember(q, catalogs) {
         if (q.length < 2) {
             emptyList()
         } else {
-            catalogs.filterNotNull().flatMap { c -> c.streams.filter { it.name.contains(q, ignoreCase = true) } }.take(300)
+            Kind.entries.mapNotNull { kind ->
+                val hits = vm.readyCatalog(kind)?.streams.orEmpty().filter { it.name.contains(q, ignoreCase = true) }.take(60)
+                if (hits.isEmpty()) {
+                    null
+                } else {
+                    ShelfData(
+                        when (kind) {
+                            Kind.LIVE -> "Sender"
+                            Kind.MOVIE -> "Filme"
+                            Kind.SERIES -> "Serien"
+                        },
+                        if (kind == Kind.LIVE) ShelfStyle.CHANNEL else ShelfStyle.POSTER,
+                        hits.map { Tile.Item(it) },
+                    )
+                }
+            }
         }
     }
-    Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("Sender, Filme oder Serien suchen") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-        )
-        if (Kind.entries.any { vm.catalog(it) is Load.Loading }) {
-            LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+    val side = if (wide) 48.dp else 16.dp
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 24.dp, bottom = 32.dp)) {
+        item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Sender, Filme oder Serien suchen") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                singleLine = true,
+                shape = Pill,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Klar.Accent,
+                    unfocusedBorderColor = Klar.SurfaceHigh,
+                    focusedContainerColor = Klar.Surface,
+                    unfocusedContainerColor = Klar.Surface,
+                ),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = side).widthIn(max = 720.dp),
+            )
         }
-        LazyColumn(Modifier.fillMaxSize()) {
-            items(results) { s ->
-                StreamRow(
-                    title = s.name,
-                    subtitle = kindLabel(s.kind),
-                    image = s.logo,
-                    favorite = s.key in vm.favorites,
-                    onClick = { vm.openStream(context, s, results) },
-                    onFavorite = { vm.toggleFavorite(s) },
-                )
-            }
-            if (query.trim().length >= 2 && results.isEmpty()) {
-                item { Text("Nichts gefunden.", modifier = Modifier.padding(24.dp)) }
-            }
+        if (Kind.entries.any { vm.catalog(it) is Load.Loading }) {
+            item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = side, vertical = 8.dp), color = Klar.Accent) }
+        }
+        item { Spacer(Modifier.height(20.dp)) }
+        items(results) { ShelfView(vm, it, side, wide) {} }
+        if (q.length >= 2 && results.isEmpty()) {
+            item { Text("Nichts gefunden für „$q“.", modifier = Modifier.padding(horizontal = side), color = Klar.TextDim) }
         }
     }
 }

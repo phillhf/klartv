@@ -19,8 +19,27 @@ data class Stream(
     val backdrop: String? = null,
     val genre: String? = null,
     val year: String? = null,
+    /** Wann der Anbieter den Eintrag hinzugefügt hat (Sekunden seit 1970), für „Neu“. */
+    val added: Long = 0,
 ) {
     val key: String get() = "${kind.name}:$id"
+}
+
+/**
+ * Eintrag in „Weiterschauen“. [parentKey] ist der Film oder die Serie, damit pro Serie nur die
+ * zuletzt gesehene Folge erscheint.
+ */
+data class ContinueEntry(
+    val key: String,
+    val parentKey: String,
+    val title: String,
+    val subtitle: String?,
+    val image: String?,
+    val url: String,
+    val position: Long,
+    val duration: Long,
+) {
+    val progress: Float get() = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
 }
 
 data class Episode(
