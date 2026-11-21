@@ -1,0 +1,65 @@
+name: Release
+
+# Von Hand starten (Actions → Release → Run workflow).
+# Baut das App-Bundle (AAB) für den Play Store und eine APK zum direkten Installieren.
+on:
+  workflow_dispatch:
+
+permissions:
+  # Schreiben nur, um AAB und APK als Entwurfs-Release abzulegen
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Tests
+        run: ./gradlew testDebugUnitTest
+
+      # Upload-Schlüssel aus den Secrets. Fehlt er, signiert der Debug-Schlüssel (nicht für den Play Store).
+      - name: Upload-Schlüssel bereitstellen
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::Keine Release-Secrets hinterlegt – nur zum Ausprobieren, nicht für den Play Store."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "RELEASE_KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      - name: App-Bundle und APK bauen
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease assembleRelease
+
+      - name: Schlüsseldatei entfernen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      # Ablage als Entwurfs-Release statt als Artefakt; Entwürfe sehen nur Mitwirkende des Repos.
+      # Es gibt immer nur einen Entwurf „neuester-build“, der vorige wird ersetzt.
+      - name: Als Entwurfs-Release ablegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cp app/build/outputs/bundle/release/app-release.aab "KlarTV-$VERSION.aab"
+          cp app/build/outputs/apk/release/app-release.apk "KlarTV-$VERSION.apk"
+          gh release delete neuester-build --yes --cleanup-tag || true
+          gh release create neuester-build --draft --target "$GITHUB_SHA" \
+            --title "Klar TV $VERSION (Build ${{ github.run_number }})" \
+            --notes "Automatisch gebaut aus $GITHUB_SHA. Nur zum Herunterladen." \
+            "KlarTV-$VERSION.aab" "KlarTV-$VERSION.apk" \
+            app/build/outputs/mapping/release/mapping.txt

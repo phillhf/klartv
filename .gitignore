@@ -1,0 +1,37 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Lokale Konfiguration (SDK-Pfad, Secrets)
+local.properties
+secrets.properties
+*.env
+
+# Signing – niemals einchecken
+*.jks
+*.keystore
+keystore.properties
+
+# Build-Ausgaben
+*.apk
+*.aab
+*.ap_
+*.dex
+output-metadata.json
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Ausnahme: fester, bewusst nicht geheimer Debug-Schlüssel für Testversionen
+!app/debug.keystore
