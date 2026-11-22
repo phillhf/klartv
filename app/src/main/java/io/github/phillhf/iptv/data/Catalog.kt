@@ -1,11 +1,17 @@
 package io.github.phillhf.iptv.data
 
 /** Alle Sender, Filme oder Serien eines Anbieters mit ihren Kategorien. */
-class Catalog(val categories: List<Category>, val streams: List<Stream>) {
+class Catalog(val categories: List<Category>, val streams: List<Stream>, val lockedIds: Set<String> = emptySet()) {
     private val byCategory: Map<String, List<Stream>> = streams.groupBy { it.categoryId }
     val byKey: Map<String, Stream> by lazy { streams.associateBy { it.key } }
 
     fun inCategory(id: String): List<Stream> = if (id == ALL) streams else byCategory[id].orEmpty()
+
+    /** Ansicht ohne gesperrte Kategorien; deren Namen bleiben sichtbar, der Inhalt nicht. */
+    fun without(locked: Set<String>): Catalog {
+        val hide = categories.mapNotNullTo(HashSet()) { c -> c.id.takeIf { it in locked } }
+        return if (hide.isEmpty()) this else Catalog(categories, streams.filter { it.categoryId !in hide }, hide)
+    }
 
     companion object {
         const val ALL = "*"

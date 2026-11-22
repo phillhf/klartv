@@ -25,6 +25,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarViewDay
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +61,8 @@ import coil3.compose.AsyncImage
 import io.github.phillhf.iptv.AppViewModel
 import io.github.phillhf.iptv.PlayItem
 import io.github.phillhf.iptv.Players
+import io.github.phillhf.iptv.Screen
+import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Category
 import io.github.phillhf.iptv.data.Kind
@@ -69,6 +76,12 @@ import java.util.Date
 import java.util.Locale
 
 private val clock = SimpleDateFormat("HH:mm", Locale.GERMANY)
+
+/** Kennung der Kategorie „Favoriten“ in den Senderlisten. */
+const val FAVORITES = "fav"
+
+fun liveCategories(vm: AppViewModel, catalog: Catalog): List<Category> =
+    if (vm.favoriteStreams(Kind.LIVE).isEmpty()) catalog.categories else listOf(Category(FAVORITES, "Favoriten")) + catalog.categories
 
 fun timeRange(start: Long, end: Long): String = "${clock.format(Date(start))} – ${clock.format(Date(end))}"
 
@@ -114,7 +127,10 @@ fun LiveScreen(vm: AppViewModel, wide: Boolean) {
 private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
     val context = LocalContext.current
     val current = vm.lastCategory[Kind.LIVE] ?: Catalog.ALL
-    val list = remember(catalog, current) { catalog.inCategory(current) }
+    val list = remember(catalog, current, vm.favorites) {
+        if (current == FAVORITES) vm.favoriteStreams(Kind.LIVE) else catalog.inCategory(current)
+    }
+    val categories = liveCategories(vm, catalog)
     var selected by remember(current) { mutableStateOf(list.firstOrNull()) }
     val preview = rememberLivePreview()
     val play = { i: Int ->
@@ -124,9 +140,19 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
 
     if (wide) {
         Row(Modifier.fillMaxSize()) {
-            CategoryRail(catalog.categories, current, { catalog.inCategory(it).size }, Modifier.width(230.dp).fillMaxHeight()) {
-                vm.lastCategory[Kind.LIVE] = it
-            }
+            CategoryRail(
+                categories,
+                current,
+                { if (it == FAVORITES) vm.favoriteStreams(Kind.LIVE).size else catalog.inCategory(it).size },
+                Modifier.width(230.dp).fillMaxHeight(),
+                locked = catalog.lockedIds,
+                header = {
+                    LabelButton(Icons.Filled.GridView, t("Mehrere Sender")) {
+                        preview.stop()
+                        vm.open(Screen.MultiView)
+                    }
+                },
+            ) { vm.chooseCategory(Kind.LIVE, it) }
             LazyColumn(Modifier.weight(1.1f).fillMaxHeight(), contentPadding = PaddingValues(vertical = 16.dp)) {
                 itemsIndexed(list) { i, s ->
                     LaunchedEffect(s.id) { vm.requestEpg(s) }
@@ -146,8 +172,12 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
         }
     } else {
         Column(Modifier.fillMaxSize()) {
-            Text("Live-TV", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 16.dp, top = 16.dp))
-            CategoryChips(catalog.categories, current, { vm.lastCategory[Kind.LIVE] = it })
+            Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Live-TV"), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                RoundButton(Icons.Filled.CalendarViewDay, t("Programm")) { vm.tab = Tab.GUIDE }
+                RoundButton(Icons.Filled.GridView, t("Mehrere Sender")) { vm.open(Screen.MultiView) }
+            }
+            CategoryChips(categories, current, { vm.chooseCategory(Kind.LIVE, it) }, locked = catalog.lockedIds)
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 16.dp)) {
                 itemsIndexed(list) { i, s ->
                     LaunchedEffect(s.id) { vm.requestEpg(s) }
@@ -195,7 +225,7 @@ private fun ChannelRow(vm: AppViewModel, stream: Stream, number: Int, selected: 
                 }
             }
         }
-        FavoriteStar(stream.key in vm.favorites) { vm.toggleFavorite(stream) }
+        FavoriteStar(vm.isFavorite(stream.key)) { vm.toggleFavorite(stream) }
     }
 }
 
@@ -289,11 +319,20 @@ private fun PreviewVideo(preview: LivePreview, url: String, modifier: Modifier) 
 
 /** Kategorien als Spalte links (TV und Tablet). */
 @Composable
-fun CategoryRail(categories: List<Category>, selected: String, count: (String) -> Int, modifier: Modifier, onSelect: (String) -> Unit) {
+fun CategoryRail(
+    categories: List<Category>,
+    selected: String,
+    count: (String) -> Int,
+    modifier: Modifier,
+    locked: Set<String> = emptySet(),
+    header: (@Composable () -> Unit)? = null,
+    onSelect: (String) -> Unit,
+) {
     val shape = RoundedCornerShape(10.dp)
     LazyColumn(modifier, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (header != null) item { Box(Modifier.padding(bottom = 12.dp)) { header() } }
         item {
-            Text("KATEGORIEN", style = MaterialTheme.typography.labelMedium, color = Klar.TextDim, modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
+            Text(t("KATEGORIEN"), style = MaterialTheme.typography.labelMedium, color = Klar.TextDim, modifier = Modifier.padding(start = 14.dp, bottom = 8.dp))
         }
         items(categories) { c ->
             val isSelected = c.id == selected
@@ -308,14 +347,16 @@ fun CategoryRail(categories: List<Category>, selected: String, count: (String) -
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    c.name,
+                    t(c.name),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isSelected) Klar.Accent else Klar.Text,
                     modifier = Modifier.weight(1f),
                 )
-                Text(count(c.id).toString(), style = MaterialTheme.typography.labelSmall, color = Klar.TextDim, modifier = Modifier.padding(start = 8.dp))
+                if (c.id in locked) {
+                    Icon(Icons.Filled.Lock, contentDescription = t("Gesperrt"), tint = Klar.Gold, modifier = Modifier.size(16.dp))
+                } else Text(count(c.id).toString(), style = MaterialTheme.typography.labelSmall, color = Klar.TextDim, modifier = Modifier.padding(start = 8.dp))
             }
         }
     }

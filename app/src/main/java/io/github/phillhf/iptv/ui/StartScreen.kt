@@ -23,6 +23,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarViewDay
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -57,6 +59,7 @@ import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.Stream
+import io.github.phillhf.iptv.t
 import kotlinx.coroutines.delay
 
 /** Eine Kachel in einer Reihe: ein Eintrag des Anbieters oder etwas zum Weiterschauen. */
@@ -132,14 +135,13 @@ fun buildShelves(vm: AppViewModel, featured: List<Stream>): List<ShelfData> {
     val movies = vm.readyCatalog(Kind.MOVIE)
     val series = vm.readyCatalog(Kind.SERIES)
 
-    if (vm.continueList.isNotEmpty()) {
-        shelves += ShelfData("Weiterschauen", ShelfStyle.WIDE, vm.continueList.map { Tile.Resume(it) })
-    }
+    val resume = vm.shownContinue
+    if (resume.isNotEmpty()) shelves += ShelfData(t("Weiterschauen"), ShelfStyle.WIDE, resume.map { Tile.Resume(it) })
     if (featured.isNotEmpty()) shelves += ShelfData("Highlights", ShelfStyle.WIDE, featured.map { Tile.Item(it) })
 
-    val favLive = live?.streams.orEmpty().filter { it.key in vm.favorites }
+    val favLive = vm.favoriteStreams(Kind.LIVE)
     if (favLive.isNotEmpty()) shelves += ShelfData("Deine Sender", ShelfStyle.CHANNEL, favLive.map { Tile.Item(it) })
-    val recentLive = vm.recent.filter { it.startsWith("LIVE:") && it !in vm.favorites }.mapNotNull { live?.byKey?.get(it) }.take(20)
+    val recentLive = vm.recent.filter { it.startsWith("LIVE:") && !vm.isFavorite(it) }.mapNotNull { live?.byKey?.get(it) }.take(20)
     if (recentLive.isNotEmpty()) shelves += ShelfData("Zuletzt gesehene Sender", ShelfStyle.CHANNEL, recentLive.map { Tile.Item(it) })
 
     fun posters(title: String, list: List<Stream>) {
@@ -149,7 +151,7 @@ fun buildShelves(vm: AppViewModel, featured: List<Stream>): List<ShelfData> {
     posters("Neue Serien", vm.newest(Kind.SERIES).ifEmpty { series?.streams.orEmpty().take(30) })
     posters(
         "Deine Merkliste",
-        (movies?.streams.orEmpty() + series?.streams.orEmpty()).filter { it.key in vm.favorites },
+        vm.favoriteStreams(Kind.MOVIE) + vm.favoriteStreams(Kind.SERIES),
     )
 
     fun categoryShelves(catalog: Catalog?, prefix: String, count: Int, style: ShelfStyle) {
@@ -242,6 +244,7 @@ fun StartScreen(vm: AppViewModel, wide: Boolean) {
     LaunchedEffect(featured) { vm.prefetch(featured) }
     val shelves = remember(movies, series, live, vm.favorites, vm.continueList, vm.recent, featured) { buildShelves(vm, featured) }
 
+    // Alle Kategorien gesperrt: Reihen, die es nicht mehr gibt, dürfen nicht stehen bleiben
     if (wide) StartWide(vm, featured, shelves) else StartPhone(vm, featured, shelves)
 }
 
@@ -306,6 +309,8 @@ private fun PhoneHeader(vm: AppViewModel, modifier: Modifier = Modifier) {
         Text("Klar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         Text(" TV", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Klar.Accent)
         Spacer(Modifier.weight(1f))
+        IconButton(onClick = { vm.tab = Tab.GUIDE }) { Icon(Icons.Filled.CalendarViewDay, contentDescription = t("Programm")) }
+        IconButton(onClick = { vm.tab = Tab.MEDIA }) { Icon(Icons.Filled.Folder, contentDescription = t("Mediathek")) }
         IconButton(onClick = { vm.tab = Tab.FAVORITES }) { Icon(Icons.Filled.Star, contentDescription = "Favoriten") }
         IconButton(onClick = { vm.tab = Tab.SETTINGS }) { Icon(Icons.Filled.Settings, contentDescription = "Einstellungen") }
     }

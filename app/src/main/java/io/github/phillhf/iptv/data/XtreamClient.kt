@@ -4,6 +4,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.IOException
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 internal fun JSONObject.optStringOrNull(name: String): String? =
     if (isNull(name)) null else optString(name).trim().takeIf { it.isNotEmpty() }
@@ -21,6 +23,9 @@ internal fun yearOf(value: String?): String? = value?.let { Regex("(19|20)\\d\\d
 /** Zugriff auf Anbieter mit Xtream-Codes-Schnittstelle (player_api.php). */
 class XtreamClient(server: String, private val username: String, private val password: String) {
     val base = normalizeServer(server)
+    @Volatile private var zone: ZoneId? = null
+
+    val epgUrl: String get() = "$base/xmltv.php?username=${queryPart(username)}&password=${queryPart(password)}"
 
     private fun api(params: String = ""): Any {
         val text = Http.get("$base/player_api.php?username=${queryPart(username)}&password=${queryPart(password)}$params").trim()
@@ -41,7 +46,8 @@ class XtreamClient(server: String, private val username: String, private val pas
             expires = info.optStringOrNull("exp_date")?.toLongOrNull()?.times(1000),
             maxConnections = info.optStringOrNull("max_connections"),
             activeConnections = info.optStringOrNull("active_cons"),
-        )
+            timezone = root.optJSONObject("server_info")?.optStringOrNull("timezone"),
+        ).also { zone = it.timezone?.let { tz -> runCatching { ZoneId.of(tz) }.getOrNull() } ?: ZoneOffset.UTC }
     }
 
     fun categories(kind: Kind): List<Category> {
@@ -76,6 +82,7 @@ class XtreamClient(server: String, private val username: String, private val pas
                         url = streamUrl("live", id, liveFormat),
                         epgId = o.optStringOrNull("epg_channel_id"),
                         number = o.optInt("num", i + 1),
+                        archiveDays = if (o.optInt("tv_archive", 0) == 1) o.optInt("tv_archive_duration", 1).coerceAtLeast(1) else 0,
                     )
                 }
                 Kind.MOVIE -> {
@@ -120,6 +127,8 @@ class XtreamClient(server: String, private val username: String, private val pas
             cast = info.optStringOrNull("cast") ?: info.optStringOrNull("actors"),
             director = info.optStringOrNull("director"),
             rating = info.optStringOrNull("rating")?.takeIf { it != "0" },
+            trailer = info.optStringOrNull("youtube_trailer"),
+            tmdbId = info.optStringOrNull("tmdb_id"),
         )
     }
 
@@ -167,11 +176,23 @@ class XtreamClient(server: String, private val username: String, private val pas
             cast = info?.optStringOrNull("cast"),
             director = info?.optStringOrNull("director"),
             year = yearOf(info?.optStringOrNull("releaseDate") ?: info?.optStringOrNull("release_date")),
+            trailer = info?.optStringOrNull("youtube_trailer"),
+            tmdbId = info?.optStringOrNull("tmdb_id") ?: info?.optStringOrNull("tmdb"),
         )
     }
 
-    fun shortEpg(streamId: String): List<EpgEntry> {
-        val root = api("&action=get_short_epg&stream_id=${queryPart(streamId)}&limit=8") as? JSONObject ?: return emptyList()
+    fun shortEpg(streamId: String): List<EpgEntry> = epg("get_short_epg", streamId, "&limit=8")
+
+    /** Ganzes Programm eines Senders samt vergangener Sendungen. */
+    fun fullEpg(streamId: String): List<EpgEntry> = epg("get_simple_data_table", streamId, "")
+
+    fun catchupUrl(streamId: String, start: Long, end: Long): String {
+        val z = zone ?: runCatching { login() }.let { zone } ?: ZoneOffset.UTC
+        return "$base/timeshift/${pathPart(username)}/${pathPart(password)}/${Catchup.xtreamPath(start, end, z)}/$streamId.ts"
+    }
+
+    private fun epg(action: String, streamId: String, extra: String): List<EpgEntry> {
+        val root = api("&action=$action&stream_id=${queryPart(streamId)}$extra") as? JSONObject ?: return emptyList()
         val arr = root.optJSONArray("epg_listings") ?: return emptyList()
         return (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.mapNotNull { o ->
             val start = o.optStringOrNull("start_timestamp")?.toLongOrNull() ?: return@mapNotNull null

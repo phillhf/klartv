@@ -14,10 +14,13 @@ data class Account(
     val username: String = "",
     val password: String = "",
     val m3uUrl: String = "",
+    /** Eigene XMLTV-Adresse, leer = die des Anbieters. */
+    val epgUrl: String = "",
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("name", name).put("type", type.name)
         .put("server", server).put("username", username).put("password", password).put("m3uUrl", m3uUrl)
+        .put("epgUrl", epgUrl)
 
     companion object {
         fun fromJson(o: JSONObject) = Account(
@@ -28,6 +31,7 @@ data class Account(
             username = o.optString("username"),
             password = o.optString("password"),
             m3uUrl = o.optString("m3uUrl"),
+            epgUrl = o.optString("epgUrl"),
         )
     }
 }
@@ -66,13 +70,41 @@ class AccountStore(context: Context) {
 class Library(context: Context, accountId: String) {
     private val prefs = context.getSharedPreferences("library_$accountId", Context.MODE_PRIVATE)
 
-    fun favorites(): Set<String> = prefs.getStringSet("favorites", emptySet())?.toSet() ?: emptySet()
+    /** Favoriten in der Reihenfolge des Nutzers. Bis 0.2.0 waren sie eine ungeordnete Menge. */
+    fun favorites(): List<String> {
+        prefs.getString("favorite_list", null)?.let { saved -> return saved.split('\n').filter { it.isNotBlank() } }
+        return prefs.getStringSet("favorites", emptySet()).orEmpty().sorted()
+    }
 
-    fun toggleFavorite(key: String): Set<String> {
+    fun toggleFavorite(key: String): List<String> {
         val current = favorites()
-        val now = if (key in current) current - key else current + key
-        prefs.edit().putStringSet("favorites", now).apply()
-        return now
+        return saveFavorites(if (key in current) current - key else current + key)
+    }
+
+    /** Verschiebt einen Favoriten innerhalb seiner Art (Sender, Filme, Serien) um einen Platz. */
+    fun moveFavorite(key: String, up: Boolean): List<String> {
+        val list = favorites().toMutableList()
+        val from = list.indexOf(key)
+        val kind = key.substringBefore(':')
+        val same = list.indices.filter { list[it].substringBefore(':') == kind }
+        val place = same.indexOf(from)
+        val to = same.getOrNull(if (up) place - 1 else place + 1)
+        if (from < 0 || to == null) return list
+        list[from] = list[to].also { list[to] = list[from] }
+        return saveFavorites(list)
+    }
+
+    private fun saveFavorites(list: List<String>): List<String> {
+        prefs.edit().putString("favorite_list", list.joinToString("\n")).remove("favorites").apply()
+        return list
+    }
+
+    /** Gesperrte Kategorien als „ART:ID“. Null, solange der Nutzer noch nichts festgelegt hat. */
+    fun lockedCategories(): Set<String>? =
+        prefs.getString("locked", null)?.split('\n')?.filter { it.isNotBlank() }?.toSet()
+
+    fun saveLockedCategories(set: Set<String>) {
+        prefs.edit().putString("locked", set.joinToString("\n")).apply()
     }
 
     fun recent(): List<String> = prefs.getString("recent", "").orEmpty().split('\n').filter { it.isNotBlank() }

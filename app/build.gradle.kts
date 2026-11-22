@@ -15,7 +15,36 @@ android {
         targetSdk = 37
         // Jeder CI-Lauf bekommt eine höhere Nummer, damit Android und Play das Update annehmen
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.2.0"
+        versionName = "0.3.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Autos brauchen im Play Store ein eigenes Paket mit eigener Nummer
+    flavorDimensions += "device"
+    productFlavors {
+        create("mobile") {
+            dimension = "device"
+            isDefault = true
+        }
+        create("car") {
+            dimension = "device"
+            minSdk = 29
+            versionCode = 1_000_000 + (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1)
+        }
+    }
+
+    // libVLC bringt je Prozessor rund 25 MB mit: lieber eine APK pro Prozessor.
+    // Beim App-Bundle trennt der Play Store selbst.
+    splits {
+        abi {
+            isEnable = gradle.startParameter.taskNames.none { it.contains("bundle", ignoreCase = true) }
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+    packaging {
+        jniLibs.excludes += "lib/x86/**"
     }
 
     signingConfigs {
@@ -90,6 +119,13 @@ dependencies {
     implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.ui)
 
+    // Zweite Engine mit eigenen Decodern (LGPL 2.1, dynamisch eingebunden)
+    implementation(libs.vlc)
+
+    // Übertragen auf Chromecast und Google TV
+    implementation(libs.cast.framework)
+    implementation(libs.androidx.mediarouter)
+
     // Senderlogos und Filmplakate
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
@@ -102,4 +138,8 @@ dependencies {
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Läuft in GitHub Actions im Emulator gegen tools/demo_server.py
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext)
 }

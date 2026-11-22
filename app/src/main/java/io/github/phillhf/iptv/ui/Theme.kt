@@ -7,41 +7,57 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import io.github.phillhf.iptv.data.AppSettings
 
-/** Farben von Klar TV: tiefes Nachtblau, Akzent Himmelblau mit Übergang zu Violett. */
+/** Ein Design: Hintergrund, Flächen und zwei Akzentfarben. */
+enum class Palette(val label: String, val bg: Long, val surface: Long, val high: Long, val accent: Long, val accent2: Long) {
+    NIGHT("Nachtblau", 0xFF070B14, 0xFF0F172A, 0xFF1A2438, 0xFF38BDF8, 0xFF818CF8),
+    OLED("Reines Schwarz", 0xFF000000, 0xFF0C0C0E, 0xFF1C1C20, 0xFF38BDF8, 0xFF22D3EE),
+    VIOLET("Violett", 0xFF0D0818, 0xFF1A1030, 0xFF2A1C48, 0xFFC084FC, 0xFFF472B6),
+    EMERALD("Smaragd", 0xFF04110D, 0xFF0A1F18, 0xFF123227, 0xFF34D399, 0xFFA3E635),
+    SUNSET("Abendrot", 0xFF140A08, 0xFF241210, 0xFF3A1E19, 0xFFFB923C, 0xFFF43F5E),
+    GRAPHITE("Graphit", 0xFF121315, 0xFF1C1E21, 0xFF2A2D31, 0xFFE2E8F0, 0xFF94A3B8),
+}
+
+/** Farben des gewählten Designs. Liest den Zustand, die Oberfläche folgt einem Wechsel also sofort. */
 object Klar {
-    val Bg = Color(0xFF070B14)
-    val Surface = Color(0xFF0F172A)
-    val SurfaceHigh = Color(0xFF1A2438)
-    val Accent = Color(0xFF38BDF8)
-    val Accent2 = Color(0xFF818CF8)
+    val palette: Palette get() = runCatching { Palette.valueOf(AppSettings.theme) }.getOrDefault(Palette.NIGHT)
+    val Bg: Color get() = Color(palette.bg)
+    val Surface: Color get() = Color(palette.surface)
+    val SurfaceHigh: Color get() = Color(palette.high)
+    val Accent: Color get() = Color(palette.accent)
+    val Accent2: Color get() = Color(palette.accent2)
+
+    /** Schrift auf Flächen in der Akzentfarbe. */
+    val OnAccent = Color(0xFF02131D)
     val Text = Color(0xFFF1F5F9)
     val TextDim = Color(0xFF94A3B8)
     val Live = Color(0xFFF43F5E)
     val Gold = Color(0xFFFBBF24)
-    val AccentBrush = Brush.linearGradient(listOf(Accent, Accent2))
+    val AccentBrush: Brush get() = Brush.linearGradient(listOf(Accent, Accent2))
 }
 
-private val Scheme = darkColorScheme(
+private fun scheme() = darkColorScheme(
     primary = Klar.Accent,
-    onPrimary = Color(0xFF02131D),
-    primaryContainer = Color(0xFF0C3A57),
-    onPrimaryContainer = Color(0xFFE0F2FE),
+    onPrimary = Klar.OnAccent,
+    primaryContainer = Klar.SurfaceHigh,
+    onPrimaryContainer = Klar.Text,
     secondary = Klar.Accent2,
-    onSecondary = Color(0xFF0B0D2A),
-    secondaryContainer = Color(0xFF1E2A4A),
-    onSecondaryContainer = Color(0xFFE0E7FF),
+    onSecondary = Klar.OnAccent,
+    secondaryContainer = Klar.SurfaceHigh,
+    onSecondaryContainer = Klar.Text,
     background = Klar.Bg,
     onBackground = Klar.Text,
     surface = Klar.Bg,
     onSurface = Klar.Text,
     surfaceVariant = Klar.SurfaceHigh,
     onSurfaceVariant = Klar.TextDim,
+    surfaceContainerLow = Klar.Surface,
     surfaceContainer = Klar.Surface,
     surfaceContainerHigh = Klar.SurfaceHigh,
-    surfaceContainerHighest = Color(0xFF243049),
-    outline = Color(0xFF334155),
-    outlineVariant = Color(0xFF1F2A3D),
+    surfaceContainerHighest = Klar.SurfaceHigh,
+    outline = Color(0xFF475569),
+    outlineVariant = Color(0xFF334155),
     error = Color(0xFFFB7185),
 )
 
@@ -59,5 +75,5 @@ private val Type = Base.copy(
 
 @Composable
 fun KlarTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = Scheme, typography = Type, content = content)
+    MaterialTheme(colorScheme = scheme(), typography = Type, content = content)
 }

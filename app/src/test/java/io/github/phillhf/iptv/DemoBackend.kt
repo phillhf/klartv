@@ -47,7 +47,7 @@ class DemoBackend : Backend {
         Kind.LIVE -> Catalog.build(
             listOf(Category("1", "Unterhaltung"), Category("2", "Sport"), Category("3", "Nachrichten"), Category("4", "Kinder"), Category("5", "Musik")),
             channels.mapIndexed { i, (name, cat) ->
-                Stream(Kind.LIVE, "c$i", name, "demo://logo/$name", cat, "http://demo.invalid/live/$i.ts", number = i + 1)
+                Stream(Kind.LIVE, "c$i", name, "demo://logo/$name", cat, "http://demo.invalid/live/$i.ts", number = i + 1, archiveDays = 3)
             },
         )
         Kind.MOVIE -> Catalog.build(
@@ -141,4 +141,20 @@ class DemoBackend : Backend {
     }
 
     override val hasEpg = true
+
+    override fun fullEpg(streamId: String): List<EpgEntry> {
+        val i = streamId.removePrefix("c").toInt()
+        val now = System.currentTimeMillis()
+        val lengths = listOf(45L, 90L, 30L, 60L, 120L)
+        val out = ArrayList<EpgEntry>()
+        var at = now - 30 * 3_600_000L - i * 13 * 60_000L
+        var k = i
+        while (at < now + 30 * 3_600_000L) {
+            val end = at + lengths[k % lengths.size] * 60_000L
+            out += EpgEntry(shows[k % shows.size], "Aktuelle Ausgabe mit Berichten und Gästen.", at, end)
+            at = end
+            k++
+        }
+        return out
+    }
 }

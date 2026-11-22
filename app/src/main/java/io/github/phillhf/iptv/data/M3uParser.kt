@@ -5,6 +5,15 @@ object M3uParser {
     private val attribute = Regex("([A-Za-z0-9_-]+)=\"([^\"]*)\"")
     private val videoFile = Regex("\\.(mp4|mkv|avi|mov|m4v|wmv)(\\?.*)?$", RegexOption.IGNORE_CASE)
 
+    /** Adresse des Programmführers aus der Kopfzeile (url-tvg oder x-tvg-url), wenn vorhanden. */
+    fun epgUrl(text: String): String? {
+        val header = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.removePrefix("﻿") ?: return null
+        if (!header.startsWith("#EXTM3U", ignoreCase = true)) return null
+        val attrs = attribute.findAll(header).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
+        return listOf("url-tvg", "x-tvg-url", "tvg-url").firstNotNullOfOrNull { attrs[it]?.takeIf { u -> u.isNotBlank() } }
+            ?.split(',')?.first()?.trim()
+    }
+
     fun parse(text: String): List<Stream> {
         val out = ArrayList<Stream>()
         var name: String? = null
@@ -40,6 +49,9 @@ object M3uParser {
                         url = url,
                         epgId = attrs["tvg-id"]?.takeIf { it.isNotBlank() },
                         number = out.size + 1,
+                        archiveDays = if (kind == Kind.LIVE) archiveDays(attrs) else 0,
+                        catchupType = attrs["catchup"] ?: attrs["catchup-type"] ?: if (attrs["timeshift"] != null) "shift" else null,
+                        catchupSource = attrs["catchup-source"],
                     )
                     name = null
                     attrs = emptyMap()
@@ -48,6 +60,11 @@ object M3uParser {
             }
         }
         return out
+    }
+
+    private fun archiveDays(attrs: Map<String, String>): Int {
+        val days = (attrs["catchup-days"] ?: attrs["timeshift"] ?: attrs["tvg-rec"])?.toIntOrNull()
+        return days ?: if (attrs["catchup"] != null || attrs["catchup-type"] != null) 1 else 0
     }
 
     /** Der Name steht nach dem ersten Komma außerhalb von Anführungszeichen. */

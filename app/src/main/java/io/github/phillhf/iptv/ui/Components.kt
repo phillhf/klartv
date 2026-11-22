@@ -63,6 +63,7 @@ import coil3.compose.AsyncImage
 import io.github.phillhf.iptv.data.Category
 import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
+import io.github.phillhf.iptv.t
 
 val Pill = RoundedCornerShape(50)
 val CardShape = RoundedCornerShape(12.dp)
@@ -407,7 +408,13 @@ fun PosterImage(url: String?, title: String, modifier: Modifier = Modifier) {
 
 /** Waagrechte Kategorie-Auswahl als Pillen (Handy und Suche). */
 @Composable
-fun CategoryChips(categories: List<Category>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+fun CategoryChips(
+    categories: List<Category>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    locked: Set<String> = emptySet(),
+) {
     LazyRow(
         modifier,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -424,9 +431,9 @@ fun CategoryChips(categories: List<Category>, selected: String, onSelect: (Strin
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
-                    c.name,
+                    if (c.id in locked) "🔒 ${t(c.name)}" else t(c.name),
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) Color(0xFF02131D) else Klar.Text,
+                    color = if (isSelected) Klar.OnAccent else Klar.Text,
                     maxLines = 1,
                 )
             }
@@ -479,10 +486,10 @@ fun FavoriteStar(favorite: Boolean, onClick: () -> Unit) {
 
 /** Folge mit Vorschaubild im Breitformat, Eckdaten und kurzer Beschreibung. */
 @Composable
-fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, progress: Float, onClick: () -> Unit) {
+fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, progress: Float, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .focusRing(shape)

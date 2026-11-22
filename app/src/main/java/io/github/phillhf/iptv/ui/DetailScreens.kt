@@ -1,6 +1,25 @@
 package io.github.phillhf.iptv.ui
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import coil3.compose.AsyncImage
+import io.github.phillhf.iptv.data.Person
+import io.github.phillhf.iptv.t
+import io.github.phillhf.iptv.transfer.TransferState
+import io.github.phillhf.iptv.transfer.TransferType
+import io.github.phillhf.iptv.transfer.Transfers
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -61,7 +80,7 @@ private fun resumeTick(): Int {
 
 @Composable
 private fun FavoriteButton(vm: AppViewModel, stream: Stream) {
-    val favorite = stream.key in vm.favorites
+    val favorite = vm.isFavorite(stream.key)
     OutlinedButton(onClick = { vm.toggleFavorite(stream) }, modifier = Modifier.focusRing(Pill)) {
         Icon(if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder, contentDescription = null, tint = if (favorite) Klar.Gold else Klar.Text)
         Spacer(Modifier.width(8.dp))
@@ -110,17 +129,89 @@ private fun DetailHeader(
         Column(Modifier.weight(1f).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             HeroInfo(title, meta, if (wide) plot else null, plotLines = 6, big = wide)
             if (wide) Credits(director, cast)
-            if (wide) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { buttons() }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { buttons() }
-            }
+            if (wide) ButtonRow(buttons)
         }
     }
+    // Auf dem Handy ist neben dem Cover zu wenig Platz
+    if (!wide) Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp)) { ButtonRow(buttons) }
     if (!wide && (!plot.isNullOrBlank() || !director.isNullOrBlank() || !cast.isNullOrBlank())) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             plot?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             Credits(director, cast)
+        }
+    }
+}
+
+/** Knöpfe, die auf dem Handy umbrechen, statt aus dem Bild zu laufen. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ButtonRow(content: @Composable () -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
+}
+
+@Composable
+private fun DownloadButton(key: String, onClick: () -> Unit) {
+    val ask = rememberNotificationPermission()
+    val x = Transfers.find(key, TransferType.DOWNLOAD)
+    val label = when {
+        x == null || x.state == TransferState.FAILED -> t("Herunterladen")
+        x.state == TransferState.DONE -> t("Heruntergeladen")
+        x.total > 0 -> t("Lädt … %1 %", (x.progress * 100).toInt())
+        else -> t("Wartet …")
+    }
+    OutlinedButton(
+        onClick = {
+            ask()
+            onClick()
+        },
+        modifier = Modifier.focusRing(Pill),
+    ) {
+        Icon(if (x?.state == TransferState.DONE) Icons.Filled.DownloadDone else Icons.Filled.Download, contentDescription = null, tint = Klar.Text)
+        Spacer(Modifier.width(8.dp))
+        Text(label, color = Klar.Text)
+    }
+}
+
+@Composable
+private fun TrailerButton(trailer: String?) {
+    val context = LocalContext.current
+    val url = trailerUrl(trailer) ?: return
+    OutlinedButton(
+        onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+        modifier = Modifier.focusRing(Pill),
+    ) {
+        Icon(Icons.Filled.Theaters, contentDescription = null, tint = Klar.Text)
+        Spacer(Modifier.width(8.dp))
+        Text(t("Trailer"), color = Klar.Text)
+    }
+}
+
+/** Anbieter liefern mal die YouTube-Kennung, mal die ganze Adresse. */
+fun trailerUrl(value: String?): String? {
+    val v = value?.trim().orEmpty()
+    return when {
+        v.startsWith("http") -> v
+        Regex("[A-Za-z0-9_-]{11}").matches(v) -> "https://www.youtube.com/watch?v=$v"
+        else -> null
+    }
+}
+
+@Composable
+private fun People(people: List<Person>, wide: Boolean) {
+    if (people.isEmpty()) return
+    Shelf(t("Besetzung"), if (wide) 48.dp else 16.dp, Modifier.padding(top = 20.dp)) {
+        items(people) { p ->
+            Column(Modifier.width(96.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(84.dp).clip(CircleShape).background(Klar.SurfaceHigh), contentAlignment = Alignment.Center) {
+                    if (p.photo != null) {
+                        AsyncImage(p.photo, p.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    } else {
+                        Text(p.name.take(1), style = MaterialTheme.typography.headlineSmall, color = Klar.TextDim)
+                    }
+                }
+                Text(p.name, style = MaterialTheme.typography.labelMedium, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                p.role?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = Klar.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
         }
     }
 }
@@ -137,13 +228,17 @@ private fun SimilarShelf(vm: AppViewModel, stream: Stream, wide: Boolean) {
 @Composable
 fun MovieScreen(vm: AppViewModel, stream: Stream) {
     val context = LocalContext.current
-    LaunchedEffect(stream.key) { vm.vodInfo(stream) }
+    LaunchedEffect(stream.key) {
+        val loaded = vm.vodInfo(stream)
+        vm.loadTmdb(stream, loaded?.year ?: stream.year, loaded?.tmdbId)
+    }
     val info = vm.cachedVodInfo(stream)
+    val more = vm.tmdb[stream.key]
     val tick = resumeTick()
     val resume = remember(tick, stream.key) { vm.position(stream.key) }
     val firstButton = remember { FocusRequester() }
     LaunchedEffect(stream.key) { if (isTv(context)) runCatching { firstButton.requestFocus() } }
-    val backdrop = info?.backdrop ?: stream.backdrop
+    val backdrop = info?.backdrop ?: stream.backdrop ?: more?.backdrop
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 600.dp
@@ -156,9 +251,9 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
                     poster = info?.cover ?: stream.logo,
                     title = stream.name,
                     meta = metaLine(info?.year ?: stream.year, info?.genre, info?.duration, (info?.rating ?: stream.rating)?.let { "★ $it" }),
-                    plot = info?.plot ?: stream.plot,
+                    plot = info?.plot ?: stream.plot ?: more?.plot,
                     director = info?.director,
-                    cast = info?.cast,
+                    cast = if (more?.people.isNullOrEmpty()) info?.cast else null,
                 ) {
                     if (resume > 0) {
                         PrimaryButton("Fortsetzen bei ${formatTime(resume)}", Icons.Filled.PlayArrow, Modifier.focusRequester(firstButton)) {
@@ -175,8 +270,11 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
                         }
                     }
                     FavoriteButton(vm, stream)
+                    DownloadButton(stream.key) { vm.downloadMovie(stream) }
+                    TrailerButton(info?.trailer ?: more?.trailer)
                 }
             }
+            item { People(more?.people.orEmpty(), wide) }
             item { SimilarShelf(vm, stream, wide) }
         }
     }
@@ -186,11 +284,17 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
 fun SeriesScreen(vm: AppViewModel, stream: Stream) {
     val context = LocalContext.current
     var state by remember(stream.key) { mutableStateOf<Load<SeriesInfo>>(Load.Loading) }
-    LaunchedEffect(stream.key) { state = vm.seriesInfo(stream) }
+    LaunchedEffect(stream.key) {
+        val loaded = vm.seriesInfo(stream)
+        state = loaded
+        val found = (loaded as? Load.Ready<SeriesInfo>)?.value
+        vm.loadTmdb(stream, found?.year ?: stream.year, found?.tmdbId)
+    }
+    val more = vm.tmdb[stream.key]
     var season by rememberSaveable(stream.key) { mutableStateOf<Int?>(null) }
     val tick = resumeTick()
     val info = (state as? Load.Ready<SeriesInfo>)?.value
-    val backdrop = info?.backdrop ?: stream.backdrop
+    val backdrop = info?.backdrop ?: stream.backdrop ?: more?.backdrop
     val firstButton = remember { FocusRequester() }
     LaunchedEffect(info != null) { if (info != null && isTv(context)) runCatching { firstButton.requestFocus() } }
 
@@ -213,9 +317,9 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                         if (seasons.isNotEmpty()) "${seasons.size} ${if (seasons.size == 1) "Staffel" else "Staffeln"}" else null,
                         stream.rating?.let { "★ $it" },
                     ),
-                    plot = info?.plot ?: stream.plot,
+                    plot = info?.plot ?: stream.plot ?: more?.plot,
                     director = info?.director,
-                    cast = info?.cast,
+                    cast = if (more?.people.isNullOrEmpty()) info?.cast else null,
                 ) {
                     if (episodes.isNotEmpty()) {
                         // Erste Folge, die noch nicht fertig ist, sonst Folge 1
@@ -228,6 +332,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                         ) { vm.playEpisodes(context, stream, info, episodes, resumeIndex) }
                     }
                     FavoriteButton(vm, stream)
+                    TrailerButton(info?.trailer ?: more?.trailer)
                 }
             }
             when (val s = state) {
@@ -254,8 +359,9 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                     itemsIndexed(episodes) { i, e ->
                         val position = remember(tick, e.key) { vm.position(e.key) }
                         val progress = vm.continueList.firstOrNull { it.key == e.key }?.progress ?: if (position > 0) 0.05f else 0f
-                        Box(Modifier.padding(horizontal = if (wide) 32.dp else 0.dp)) {
+                        Row(Modifier.padding(horizontal = if (wide) 32.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             EpisodeRow(
+                                modifier = Modifier.weight(1f),
                                 title = "${e.number}. ${e.title}",
                                 meta = metaLine(e.duration, if (position > 0) "weiter bei ${formatTime(position)}" else null),
                                 plot = e.plot,
@@ -263,12 +369,27 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                                 progress = progress,
                                 onClick = { vm.playEpisodes(context, stream, s.value, episodes, i) },
                             )
+                            EpisodeDownload(e.key) { vm.downloadEpisode(stream, s.value, e) }
                         }
                     }
                 }
             }
+            item { People(more?.people.orEmpty(), wide) }
             item { SimilarShelf(vm, stream, wide) }
         }
+    }
+}
+
+@Composable
+private fun EpisodeDownload(key: String, onClick: () -> Unit) {
+    val ask = rememberNotificationPermission()
+    val x = Transfers.find(key, TransferType.DOWNLOAD)
+    Box(contentAlignment = Alignment.Center) {
+        RoundButton(if (x?.state == TransferState.DONE) Icons.Filled.DownloadDone else Icons.Filled.Download, t("Herunterladen")) {
+            ask()
+            onClick()
+        }
+        if (x?.active == true) CircularProgressIndicator(progress = { x.progress }, modifier = Modifier.size(44.dp), color = Klar.Accent, strokeWidth = 2.dp)
     }
 }
 

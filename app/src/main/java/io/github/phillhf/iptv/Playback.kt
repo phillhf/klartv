@@ -32,10 +32,31 @@ data class PlayItem(
     val subtitle: String? = null,
     val recentKey: String = key,
     val image: String? = null,
+    /** Vergangene Sendung; die Position wird nicht gemerkt. */
+    val catchup: Boolean = false,
+    /** Datei auf dem Gerät. */
+    val local: Boolean = false,
+    /** Sender mit Catch-up, also „Von vorn“ möglich. */
+    val archive: Boolean = false,
+    /** Adresse zum Aufnehmen, wenn sie von der Wiedergabe abweicht. */
+    val recordUrl: String? = null,
 )
 
 fun Stream.toPlayItem(image: String? = logo) =
-    PlayItem(key = key, title = name, url = url, live = kind == Kind.LIVE, streamId = id, image = image)
+    PlayItem(
+        key = key,
+        title = name,
+        url = url,
+        live = kind == Kind.LIVE,
+        streamId = id,
+        image = image,
+        archive = archiveDays > 0,
+        recordUrl = recordUrl(),
+    )
+
+/** Xtream liefert denselben Sender auch als durchgehenden Strom, der sich besser aufnehmen lässt. */
+fun Stream.recordUrl(): String? =
+    if (kind == Kind.LIVE && url.contains("/live/") && url.endsWith("/$id.m3u8")) url.removeSuffix(".m3u8") + ".ts" else null
 
 fun PlayItem.toMediaItem(): MediaItem {
     val builder = MediaItem.Builder()
@@ -74,4 +95,7 @@ object PlaybackQueue {
     var library: Library? = null
     var epg: (suspend (PlayItem) -> List<EpgEntry>)? = null
     var onPlay: ((PlayItem) -> Unit)? = null
+
+    /** Baut den Eintrag, um eine Sendung von vorn anzusehen. */
+    var catchup: (suspend (PlayItem, EpgEntry) -> PlayItem?)? = null
 }

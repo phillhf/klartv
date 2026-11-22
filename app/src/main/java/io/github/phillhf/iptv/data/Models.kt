@@ -21,6 +21,10 @@ data class Stream(
     val year: String? = null,
     /** Wann der Anbieter den Eintrag hinzugefügt hat (Sekunden seit 1970), für „Neu“. */
     val added: Long = 0,
+    /** So viele Tage zurück stellt der Anbieter Sendungen bereit (Catch-up), 0 = gar nicht. */
+    val archiveDays: Int = 0,
+    val catchupType: String? = null,
+    val catchupSource: String? = null,
 ) {
     val key: String get() = "${kind.name}:$id"
 }
@@ -64,6 +68,8 @@ data class SeriesInfo(
     val cast: String? = null,
     val director: String? = null,
     val year: String? = null,
+    val trailer: String? = null,
+    val tmdbId: String? = null,
 )
 
 data class VodInfo(
@@ -76,7 +82,11 @@ data class VodInfo(
     val cast: String? = null,
     val director: String? = null,
     val rating: String? = null,
+    val trailer: String? = null,
+    val tmdbId: String? = null,
 )
+
+data class Person(val name: String, val role: String?, val photo: String?)
 
 /** Eine Sendung im Programmführer, Zeiten in Millisekunden seit 1970. */
 data class EpgEntry(val title: String, val description: String, val start: Long, val end: Long)
@@ -86,6 +96,8 @@ data class AccountStatus(
     val expires: Long?,
     val maxConnections: String?,
     val activeConnections: String?,
+    /** Zeitzone des Servers, gebraucht für Catch-up-Adressen. */
+    val timezone: String? = null,
 )
 
 sealed interface Load<out T> {

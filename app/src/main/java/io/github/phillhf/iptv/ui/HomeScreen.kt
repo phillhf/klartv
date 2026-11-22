@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
@@ -30,12 +31,18 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarViewDay
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -70,18 +77,21 @@ import io.github.phillhf.iptv.Screen
 import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
+import io.github.phillhf.iptv.t
 
 enum class Tab(val label: String, val icon: ImageVector) {
     START("Start", Icons.Filled.Home),
     LIVE("Live-TV", Icons.Filled.LiveTv),
+    GUIDE("Programm", Icons.Filled.CalendarViewDay),
     MOVIES("Filme", Icons.Filled.Movie),
     SERIES("Serien", Icons.Filled.VideoLibrary),
     FAVORITES("Favoriten", Icons.Filled.Star),
+    MEDIA("Mediathek", Icons.Filled.Folder),
     SEARCH("Suche", Icons.Filled.Search),
     SETTINGS("Einstellungen", Icons.Filled.Settings),
 }
 
-/** Auf dem Handy passen nicht alle Bereiche in die Leiste; Favoriten und Einstellungen sind oben auf „Start“. */
+/** Auf dem Handy passen nicht alle Bereiche in die Leiste; die übrigen sind oben auf „Start“. */
 private val PhoneTabs = listOf(Tab.START, Tab.LIVE, Tab.MOVIES, Tab.SERIES, Tab.SEARCH)
 
 private val NavCollapsed = 84.dp
@@ -99,14 +109,14 @@ fun HomeScreen(vm: AppViewModel) {
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxWidth()) { TabContent(vm, wide = false) }
                 NavigationBar(containerColor = Klar.Surface) {
-                    PhoneTabs.forEach { t ->
+                    PhoneTabs.forEach { item ->
                         NavigationBarItem(
-                            selected = vm.tab == t,
-                            onClick = { vm.tab = t },
-                            icon = { Icon(t.icon, contentDescription = t.label) },
-                            label = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            selected = vm.tab == item,
+                            onClick = { vm.tab = item },
+                            icon = { Icon(item.icon, contentDescription = t(item.label)) },
+                            label = { Text(t(item.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF02131D),
+                                selectedIconColor = Klar.OnAccent,
                                 indicatorColor = Klar.Accent,
                                 unselectedIconColor = Klar.TextDim,
                                 unselectedTextColor = Klar.TextDim,
@@ -140,10 +150,10 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
                 },
             )
             .onFocusChanged { expanded = it.hasFocus }
-            .padding(horizontal = 14.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 14.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Row(Modifier.padding(start = 6.dp, bottom = 28.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(44.dp))
             AnimatedVisibility(expanded, enter = fadeIn(), exit = fadeOut()) {
                 Row(Modifier.padding(start = 6.dp)) {
@@ -152,9 +162,9 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
                 }
             }
         }
-        Tab.entries.forEach { t ->
-            if (t == Tab.SETTINGS) Spacer(Modifier.weight(1f))
-            NavItem(t, t == selected, expanded) { onSelect(t) }
+        Tab.entries.forEach { item ->
+            if (item == Tab.SETTINGS) Spacer(Modifier.weight(1f))
+            NavItem(item, item == selected, expanded) { onSelect(item) }
         }
     }
 }
@@ -168,14 +178,14 @@ private fun NavItem(tab: Tab, selected: Boolean, expanded: Boolean, onClick: () 
         else -> Color.Transparent
     }
     val fg = when {
-        focused -> Color(0xFF02131D)
+        focused -> Klar.OnAccent
         selected -> Klar.Accent
         else -> Klar.TextDim
     }
     Row(
         Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(44.dp)
             .onFocusChanged { focused = it.isFocused }
             .clip(Pill)
             .background(bg)
@@ -183,10 +193,10 @@ private fun NavItem(tab: Tab, selected: Boolean, expanded: Boolean, onClick: () 
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(tab.icon, contentDescription = tab.label, tint = fg)
+        Icon(tab.icon, contentDescription = t(tab.label), tint = fg)
         if (expanded) {
             Text(
-                tab.label,
+                t(tab.label),
                 color = if (focused) fg else Klar.Text,
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
@@ -202,6 +212,8 @@ private fun TabContent(vm: AppViewModel, wide: Boolean) {
         when (tab) {
             Tab.START -> StartScreen(vm, wide)
             Tab.LIVE -> LiveScreen(vm, wide)
+            Tab.GUIDE -> GuideScreen(vm, wide)
+            Tab.MEDIA -> MediaLibraryScreen(vm, wide)
             Tab.MOVIES -> MediaScreen(vm, Kind.MOVIE, wide)
             Tab.SERIES -> MediaScreen(vm, Kind.SERIES, wide)
             Tab.FAVORITES -> FavoritesScreen(vm, wide)
@@ -250,7 +262,8 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
                 current,
                 { catalog.inCategory(it).size },
                 Modifier.width(240.dp).fillMaxHeight().background(Klar.Bg.copy(alpha = 0.6f)),
-            ) { vm.lastCategory[kind] = it }
+                locked = catalog.lockedIds,
+            ) { vm.chooseCategory(kind, it) }
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Crossfade(targetState = spot, animationSpec = tween(250), label = "Info") { s ->
                     if (s != null) {
@@ -300,7 +313,7 @@ private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp),
         )
-        CategoryChips(catalog.categories, current, { vm.lastCategory[kind] = it })
+        CategoryChips(catalog.categories, current, { vm.chooseCategory(kind, it) }, locked = catalog.lockedIds)
         LazyVerticalGrid(
             GridCells.Adaptive(108.dp),
             Modifier.weight(1f).fillMaxWidth(),
@@ -322,16 +335,27 @@ private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
 private fun FavoritesScreen(vm: AppViewModel, wide: Boolean) {
     LaunchedEffect(vm.active?.id) { Kind.entries.forEach { vm.ensureLoaded(it) } }
     val loading = Kind.entries.any { vm.catalog(it) is Load.Loading }
+    var sorting by rememberSaveable { mutableStateOf(false) }
+    if (sorting) {
+        SortFavorites(vm, wide) { sorting = false }
+        return
+    }
     val shelves = buildList {
-        if (vm.continueList.isNotEmpty()) add(ShelfData("Weiterschauen", ShelfStyle.WIDE, vm.continueList.map { Tile.Resume(it) }))
-        fun favs(kind: Kind) = vm.readyCatalog(kind)?.streams.orEmpty().filter { it.key in vm.favorites }.map { Tile.Item(it) }
+        val resume = vm.shownContinue
+        if (resume.isNotEmpty()) add(ShelfData(t("Weiterschauen"), ShelfStyle.WIDE, resume.map { Tile.Resume(it) }))
+        fun favs(kind: Kind) = vm.favoriteStreams(kind).map { Tile.Item(it) }
         favs(Kind.LIVE).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Sender", ShelfStyle.CHANNEL, it)) }
         favs(Kind.MOVIE).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Filme", ShelfStyle.POSTER, it)) }
         favs(Kind.SERIES).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Serien", ShelfStyle.POSTER, it)) }
     }
     val side = if (wide) 48.dp else 16.dp
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 24.dp, bottom = 32.dp)) {
-        item { Text("Favoriten", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = side, bottom = 16.dp)) }
+        item {
+            Row(Modifier.padding(start = side, end = side, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Favoriten"), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                if (vm.favorites.size > 1) LabelButton(Icons.Filled.SwapVert, t("Sortieren")) { sorting = true }
+            }
+        }
         if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = side), color = Klar.Accent) }
         items(shelves) { ShelfView(vm, it, side, wide) {} }
         if (!loading && shelves.isEmpty()) {
@@ -344,6 +368,37 @@ private fun FavoritesScreen(vm: AppViewModel, wide: Boolean) {
             }
         }
     }
+}
+
+/** Reihenfolge der Favoriten mit Hoch/Runter, das geht mit Fernbedienung und Touch. */
+@Composable
+private fun SortFavorites(vm: AppViewModel, wide: Boolean, onDone: () -> Unit) {
+    BackHandler { onDone() }
+    val side = if (wide) 48.dp else 16.dp
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = side, end = side, top = 16.dp, bottom = 32.dp)) {
+        item { TitleBar(t("Favoriten sortieren"), onBack = onDone) }
+        Kind.entries.forEach { kind ->
+            val list = vm.favoriteStreams(kind)
+            if (list.size > 1) {
+                item { Text(kindPlural(kind), style = MaterialTheme.typography.titleLarge, color = Klar.Accent, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)) }
+                items(list, key = { it.key }) { s ->
+                    Row(Modifier.animateItem().fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Logo(s.logo, s.name, 44.dp)
+                        Text(s.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                        RoundButton(Icons.Filled.KeyboardArrowUp, t("Nach oben")) { vm.moveFavorite(s, up = true) }
+                        RoundButton(Icons.Filled.KeyboardArrowDown, t("Nach unten")) { vm.moveFavorite(s, up = false) }
+                        RoundButton(Icons.Filled.Delete, t("Entfernen")) { vm.toggleFavorite(s) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun kindPlural(kind: Kind) = when (kind) {
+    Kind.LIVE -> t("Sender")
+    Kind.MOVIE -> t("Filme")
+    Kind.SERIES -> t("Serien")
 }
 
 @Composable

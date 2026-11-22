@@ -10,10 +10,23 @@ import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 
 object Http {
-    const val USER_AGENT = "KlarTV/1.0 (Android)"
+    private const val DEFAULT_AGENT = "KlarTV/1.0 (Android)"
+
+    /** Kennung gegenüber dem Anbieter; manche Anbieter lassen nur bestimmte Player zu. */
+    val USER_AGENT: String get() = AppSettings.userAgent.trim().ifEmpty { DEFAULT_AGENT }
 
     /** Lädt Text. Folgt Weiterleitungen auch von http zu https, was HttpURLConnection allein nicht tut. */
-    fun get(address: String): String {
+    fun get(address: String, headers: Map<String, String> = emptyMap()): String {
+        val conn = open(address, headers)
+        try {
+            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /** Öffnet eine Verbindung und folgt Weiterleitungen. Der Aufrufer schließt sie. */
+    fun open(address: String, headers: Map<String, String> = emptyMap()): HttpURLConnection {
         var url = URL(address)
         repeat(6) {
             val conn = url.openConnection() as HttpURLConnection
@@ -21,6 +34,8 @@ object Http {
             conn.readTimeout = 60_000
             conn.instanceFollowRedirects = false
             conn.setRequestProperty("User-Agent", USER_AGENT)
+            headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+            var keep = false
             try {
                 val code = conn.responseCode
                 if (code in 300..399) {
@@ -30,9 +45,10 @@ object Http {
                 }
                 if (code == 401 || code == 403) throw IOException("Zugang verweigert (Fehler $code). Zugangsdaten prüfen.")
                 if (code !in 200..299) throw IOException("Der Server meldet Fehler $code.")
-                return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                keep = true
+                return conn
             } finally {
-                conn.disconnect()
+                if (!keep) conn.disconnect()
             }
         }
         throw IOException("Zu viele Weiterleitungen.")

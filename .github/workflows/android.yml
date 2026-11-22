@@ -25,7 +25,7 @@ jobs:
 
       # Alle Tests; die Screenshot-Tests speichern dabei die Bildschirme als PNG
       - name: Tests und Screenshots
-        run: ./gradlew recordRoborazziDebug
+        run: ./gradlew recordRoborazziMobileDebug
 
       - name: Testbericht hochladen
         if: failure()
@@ -45,4 +45,4 @@ jobs:
           if-no-files-found: ignore
 
       - name: Debug-APK bauen
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleMobileDebug assembleCarDebug
