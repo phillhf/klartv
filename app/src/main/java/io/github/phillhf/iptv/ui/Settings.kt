@@ -1,5 +1,7 @@
 package io.github.phillhf.iptv.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -200,6 +202,7 @@ fun SettingsScreen(vm: AppViewModel) {
                 ),
             )
             Dim(t("Verwendet libVLC (LGPL 2.1), Media3 und Coil (Apache 2.0) und das Google Cast SDK. Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert."))
+            PrivacyLink()
         }
     }
 
@@ -252,6 +255,17 @@ private fun Dim(text: String) {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+/** Die Adresse steht auch als Text da: Fernseher haben oft keinen Browser. */
+@Composable
+private fun PrivacyLink() {
+    val context = LocalContext.current
+    val url = "https://github.com/phillhf/klartv/blob/main/docs/" + if (I18n.german) "DATENSCHUTZ.md" else "PRIVACY.md"
+    Action(null, t("Datenschutzerklärung")) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
+    Dim(url)
+}
+
 @Composable
 private fun FlowButtons(content: @Composable () -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }

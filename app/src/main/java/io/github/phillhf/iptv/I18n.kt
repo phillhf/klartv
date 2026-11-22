@@ -45,6 +45,8 @@ object I18n {
         o.keys().asSequence().associateWith { o.getString(it) }
     }.getOrDefault(emptyMap())
 
+    val german: Boolean get() = table.isEmpty()
+
     fun get(text: String): String = table[text] ?: text
 }
 

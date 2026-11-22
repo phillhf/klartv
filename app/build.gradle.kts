@@ -15,7 +15,7 @@ android {
         targetSdk = 37
         // Jeder CI-Lauf bekommt eine höhere Nummer, damit Android und Play das Update annehmen
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.3.1"
+        versionName = "0.3.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

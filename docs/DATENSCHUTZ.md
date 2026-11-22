@@ -1,4 +1,7 @@
-# Datenschutz
+# Datenschutzerklärung der App „Klar TV“
+
+[English](PRIVACY.md) · Stand: 22. November 2026 · Anbieter: phillhf
+
 
 Klar TV hat keinen eigenen Server, kein Konto, keine Werbung und keine Auswertung des Nutzungsverhaltens.
 
@@ -21,3 +24,9 @@ Cloud-Sicherung ausgenommen und verschwinden mit der Deinstallation.
 **Berechtigungen:** Benachrichtigungen (Downloads und Aufnahmen), genaue Wecker (geplante Aufnahmen), Start nach
 Neustart (geplante Aufnahmen neu stellen), lokales Netzwerk (Server im eigenen Netz). Auf Dateien greift die App
 nur in Ordnern zu, die du selbst auswählst.
+
+**Löschen:** Einzelne Anbieter lassen sich in den Einstellungen mit Favoriten und Verlauf entfernen. Wer die App
+deinstalliert, löscht alle ihre Daten. Der Entwickler besitzt keine Daten über dich.
+
+**Fragen:** über [GitHub Issues](https://github.com/phillhf/klartv/issues). Bitte dort keine Zugangsdaten posten,
+die Seite ist öffentlich.

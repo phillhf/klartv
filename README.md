@@ -35,7 +35,7 @@ Neue Texte laufen durch `t("…")`; `python tools/texte.py` zeigt, welche Übers
 
 Store-Grafiken neu erzeugen: `java -Djava.awt.headless=true tools/Grafiken.java .`
 
-Datenschutz: [docs/DATENSCHUTZ.md](docs/DATENSCHUTZ.md)
+Datenschutz: [docs/DATENSCHUTZ.md](docs/DATENSCHUTZ.md) ([English](docs/PRIVACY.md))
 
 ## Echtheit prüfen
 
