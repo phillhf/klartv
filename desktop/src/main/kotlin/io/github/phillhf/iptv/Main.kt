@@ -60,6 +60,7 @@ import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.Klar
 import io.github.phillhf.iptv.ui.KlarTheme
 import io.github.phillhf.iptv.ui.PlayerScreen
+import java.awt.GraphicsEnvironment
 import kotlinx.coroutines.delay
 import java.awt.Dimension
 import java.awt.Point
@@ -93,7 +94,7 @@ internal fun runApp() {
         val prefs = remember { context.openPrefs("window") }
         val state = rememberWindowState(
             placement = if (prefs.getBoolean("max", false)) WindowPlacement.Maximized else WindowPlacement.Floating,
-            size = DpSize(prefs.getInt("w", 1280).coerceIn(900, 6000).dp, prefs.getInt("h", 780).coerceIn(560, 4000).dp),
+            size = startSize(prefs.getInt("w", 1280), prefs.getInt("h", 780)),
             position = WindowPosition(androidx.compose.ui.Alignment.Center),
         )
         var asking by remember { mutableStateOf(false) }
@@ -177,6 +178,12 @@ internal fun runApp() {
             }
         }
     }
+}
+
+/** Nicht größer als der Bildschirm ohne Taskleiste. */
+private fun startSize(w: Int, h: Int): DpSize {
+    val area = GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds
+    return DpSize(w.coerceIn(700, maxOf(700, area.width)).dp, h.coerceIn(500, maxOf(500, area.height)).dp)
 }
 
 /** Wie Androids Lebenszyklus: Solange der Player offen ist, ruht die App darunter. */

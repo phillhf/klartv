@@ -9,6 +9,7 @@ import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.player.PlayerHost
 import io.github.phillhf.iptv.player.PlayerSession
 import io.github.phillhf.iptv.ui.Tab
+import java.awt.event.InputEvent
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -105,7 +106,15 @@ class WindowRunTest {
         ui { session.mouseMoved() }
         shot("fenster_player")
         // Tastatur über das echte Fenster
-        ui { window().toFront(); window().requestFocus() }
+        // Klick in die Titelleiste holt das Fenster nach vorn
+        val b: Rectangle = ui { window().toFront(); window().bounds }
+        Robot().apply {
+            mouseMove(b.x + b.width / 3, b.y + 14)
+            mousePress(InputEvent.BUTTON1_DOWN_MASK)
+            mouseRelease(InputEvent.BUTTON1_DOWN_MASK)
+        }
+        Thread.sleep(600)
+        println("Fenster aktiv: ${ui { window().isFocused }}")
         press(KeyEvent.VK_F)
         waitFor("Vollbild", 10, state) { session.ui.fullscreen }
         shot("fenster_vollbild")

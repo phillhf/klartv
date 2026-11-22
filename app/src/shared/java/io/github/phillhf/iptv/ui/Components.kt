@@ -369,14 +369,21 @@ fun Shelf(
     Column(modifier) {
         Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = side, bottom = 4.dp))
         val state = rememberLazyListState()
-        Box {
+        val row = @Composable {
             LazyRow(
                 state = state,
                 contentPadding = PaddingValues(start = side, end = side, top = 12.dp, bottom = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 content = content,
             )
-            if (mouseDriven) ShelfArrows(state, Modifier.matchParentSize())
+        }
+        if (mouseDriven) {
+            Box {
+                row()
+                ShelfArrows(state, Modifier.matchParentSize())
+            }
+        } else {
+            row()
         }
     }
 }

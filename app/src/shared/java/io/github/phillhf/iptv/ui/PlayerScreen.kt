@@ -168,52 +168,58 @@ private fun Controls(ui: PlayerUi, actions: PlayerActions) {
                 }
             }
             Spacer(Modifier.height(10.dp))
-            LazyRow(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (ui.items.size > 1) item { RoundButton(Icons.Filled.SkipPrevious, t("Vorheriger")) { actions.step(-1) } }
-                if (ui.duration > 0) item { RoundButton(Icons.Filled.FastRewind, t("10 Sekunden zurück")) { actions.seekBy(-10_000) } }
-                item {
-                    RoundButton(
-                        if (ui.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        if (ui.playing) t("Pause") else t("Abspielen"),
-                        modifier = Modifier.focusRequester(play), size = 60.dp, filled = true,
-                    ) { actions.togglePlay() }
-                }
-                if (ui.duration > 0) item { RoundButton(Icons.Filled.FastForward, t("30 Sekunden vor")) { actions.seekBy(30_000) } }
-                if (ui.items.size > 1) item { RoundButton(Icons.Filled.SkipNext, t("Nächster")) { actions.step(1) } }
-                item { Spacer(Modifier.width(12.dp)) }
-                if (ui.canStartOver) item { LabelButton(Icons.Filled.Replay, t("Von vorn")) { actions.startOver() } }
-                if (item.live) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LazyRow(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (ui.items.size > 1) item { RoundButton(Icons.Filled.SkipPrevious, t("Vorheriger")) { actions.step(-1) } }
+                    if (ui.duration > 0) item { RoundButton(Icons.Filled.FastRewind, t("10 Sekunden zurück")) { actions.seekBy(-10_000) } }
                     item {
-                        val recording = Transfers.list.any { it.key == item.key && it.active }
-                        LabelButton(Icons.Filled.FiberManualRecord, if (recording) t("Aufnahme beenden") else t("Aufnehmen"), tint = Klar.Live) { actions.record() }
+                        RoundButton(
+                            if (ui.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            if (ui.playing) t("Pause") else t("Abspielen"),
+                            modifier = Modifier.focusRequester(play), size = 60.dp, filled = true,
+                        ) { actions.togglePlay() }
                     }
-                    if (ui.items.size > 1) item { LabelButton(Icons.AutoMirrored.Filled.List, t("Sender")) { actions.openPanel(PlayerPanel.CHANNELS) } }
-                }
-                item { LabelButton(Icons.Filled.Audiotrack, t("Ton")) { actions.openPanel(PlayerPanel.AUDIO) } }
-                item { LabelButton(Icons.Filled.Subtitles, t("Untertitel")) { actions.openPanel(PlayerPanel.SUBTITLES) } }
-                if (!item.live) item { LabelButton(Icons.Filled.Speed, "${ui.speed}×") { actions.openPanel(PlayerPanel.SPEED) } }
-                item { LabelButton(Icons.Filled.AspectRatio, t("Bildformat")) { actions.openPanel(PlayerPanel.SCALE) } }
-                if (ui.canSwitchEngine) item { LabelButton(Icons.Filled.Memory, ui.engineName.ifEmpty { "Player" }) { actions.openPanel(PlayerPanel.ENGINE) } }
-                item { LabelButton(Icons.Filled.Nightlight, t("Schlaf-Timer")) { actions.openPanel(PlayerPanel.SLEEP) } }
-                ui.volume?.let { v ->
-                    item {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RoundButton(if (v > 0f) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff, t("Lautstärke")) {
-                                actions.volume(if (v > 0f) 0f else 1f)
-                            }
-                            Slider(
-                                value = v,
-                                onValueChange = { actions.volume(it) },
-                                colors = SliderDefaults.colors(thumbColor = Klar.Accent, activeTrackColor = Klar.Accent, inactiveTrackColor = Color.White.copy(alpha = 0.25f)),
-                                modifier = Modifier.width(120.dp),
-                            )
+                    if (ui.duration > 0) item { RoundButton(Icons.Filled.FastForward, t("30 Sekunden vor")) { actions.seekBy(30_000) } }
+                    if (ui.items.size > 1) item { RoundButton(Icons.Filled.SkipNext, t("Nächster")) { actions.step(1) } }
+                    item { Spacer(Modifier.width(12.dp)) }
+                    if (ui.canStartOver) item { LabelButton(Icons.Filled.Replay, t("Von vorn")) { actions.startOver() } }
+                    if (item.live) {
+                        item {
+                            val recording = Transfers.list.any { it.key == item.key && it.active }
+                            LabelButton(Icons.Filled.FiberManualRecord, if (recording) t("Aufnahme beenden") else t("Aufnehmen"), tint = Klar.Live) { actions.record() }
                         }
+                        if (ui.items.size > 1) item { LabelButton(Icons.AutoMirrored.Filled.List, t("Sender")) { actions.openPanel(PlayerPanel.CHANNELS) } }
                     }
+                    item { LabelButton(Icons.Filled.Audiotrack, t("Ton")) { actions.openPanel(PlayerPanel.AUDIO) } }
+                    item { LabelButton(Icons.Filled.Subtitles, t("Untertitel")) { actions.openPanel(PlayerPanel.SUBTITLES) } }
+                    if (!item.live) item { LabelButton(Icons.Filled.Speed, "${ui.speed}×") { actions.openPanel(PlayerPanel.SPEED) } }
+                    item { LabelButton(Icons.Filled.AspectRatio, t("Bildformat")) { actions.openPanel(PlayerPanel.SCALE) } }
+                    if (ui.canSwitchEngine) item { LabelButton(Icons.Filled.Memory, ui.engineName.ifEmpty { "Player" }) { actions.openPanel(PlayerPanel.ENGINE) } }
+                    item { LabelButton(Icons.Filled.Nightlight, t("Schlaf-Timer")) { actions.openPanel(PlayerPanel.SLEEP) } }
                 }
-                if (ui.canFullscreen) {
-                    item { RoundButton(if (ui.fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen, t("Vollbild")) { actions.fullscreen() } }
-                }
+                if (ui.volume != null || ui.canFullscreen) WindowControls(ui, actions)
             }
+        }
+    }
+}
+
+/** Lautstärke und Vollbild, nur unter Windows. */
+@Composable
+private fun WindowControls(ui: PlayerUi, actions: PlayerActions) {
+    Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        ui.volume?.let { v ->
+            RoundButton(if (v > 0f) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff, t("Lautstärke")) {
+                actions.volume(if (v > 0f) 0f else 1f)
+            }
+            Slider(
+                value = v,
+                onValueChange = { actions.volume(it) },
+                colors = SliderDefaults.colors(thumbColor = Klar.Accent, activeTrackColor = Klar.Accent, inactiveTrackColor = Color.White.copy(alpha = 0.25f)),
+                modifier = Modifier.width(110.dp).padding(end = 8.dp),
+            )
+        }
+        if (ui.canFullscreen) {
+            RoundButton(if (ui.fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen, t("Vollbild")) { actions.fullscreen() }
         }
     }
 }
