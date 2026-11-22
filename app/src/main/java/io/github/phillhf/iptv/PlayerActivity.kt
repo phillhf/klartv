@@ -415,7 +415,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
 
     override fun togglePlay() {
         val e = engine ?: return
-        if (e.isPlaying) {
+        if (e.isActive) {
             e.pause()
         } else {
             ui.message = null

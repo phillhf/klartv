@@ -115,7 +115,7 @@ class TvTest : DeviceBase() {
         key(KeyEvent.KEYCODE_DPAD_RIGHT)
         shot("tv_programm")
         key(KeyEvent.KEYCODE_DPAD_CENTER)
-        expectOnScreen("Beschreibung zu Sendung", "Aufnehmen")
+        expectOnScreen("Beschreibung zu Sendung", "Aufnehmen", "Sender ansehen")
         shot("tv_sendung")
     }
 }

@@ -26,6 +26,9 @@ interface Engine {
     val durationMs: Long
     val isPlaying: Boolean
 
+    /** Spielt oder lädt gerade, um gleich zu spielen; danach richtet sich die Pause-Taste. */
+    val isActive: Boolean
+
     fun audioTracks(): List<Track>
     fun textTracks(): List<Track>
     fun selectAudio(id: String)

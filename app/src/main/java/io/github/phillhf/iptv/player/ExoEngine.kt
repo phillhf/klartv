@@ -126,6 +126,9 @@ class ExoEngine(context: Context) : Engine {
 
     override val isPlaying: Boolean get() = player.isPlaying
 
+    override val isActive: Boolean
+        get() = player.playWhenReady && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
+
     private fun tracks(type: Int): List<Track> = player.currentTracks.groups.withIndex()
         .filter { (_, g) -> g.type == type }
         .flatMap { (gi, g) ->

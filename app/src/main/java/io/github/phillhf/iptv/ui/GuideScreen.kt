@@ -141,7 +141,7 @@ private fun Guide(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
     }
     LaunchedEffect(day) {
         // Heute bei jetzt beginnen, sonst zur Hauptsendezeit
-        val at = if (day == 0) System.currentTimeMillis() - 30 * MINUTE else from + 18 * 60 * MINUTE
+        val at = if (day == 0) System.currentTimeMillis() - 5 * MINUTE else from + 18 * 60 * MINUTE
         scroll.scrollTo(with(density) { (MinuteWidth * ((at - from) / MINUTE).toFloat()).roundToPx() }.coerceAtLeast(0))
     }
     var open by remember { mutableStateOf<Pair<Stream, EpgEntry>?>(null) }

@@ -147,6 +147,7 @@ class VlcEngine(context: Context) : Engine {
     override val positionMs: Long get() = time
     override val durationMs: Long get() = length.coerceAtLeast(0)
     override val isPlaying: Boolean get() = playing
+    override val isActive: Boolean get() = playing
 
     private fun list(tracks: Array<MediaPlayer.TrackDescription>?, current: Int) =
         tracks.orEmpty().filter { it.id >= 0 }.map { Track(it.id.toString(), it.name ?: "#${it.id}", it.id == current) }
