@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.transfer
 
+import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.data.Http
 import java.io.File
 import java.io.FileOutputStream
@@ -34,7 +35,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
                 pause(2_000L * attempt)
             }
         }
-        if (!part.renameTo(target)) throw Fatal("Datei konnte nicht gespeichert werden.")
+        if (!part.renameTo(target)) throw Fatal(t("Datei konnte nicht gespeichert werden."))
     }
 
     class Fatal(message: String) : IOException(message)
@@ -44,7 +45,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
         val conn = Http.open(url, if (have > 0) mapOf("Range" to "bytes=$have-") else emptyMap())
         try {
             val type = conn.contentType.orEmpty()
-            if (type.startsWith("text/html") || type.contains("json")) throw Fatal("Der Anbieter liefert keine Videodatei.")
+            if (type.startsWith("text/html") || type.contains("json")) throw Fatal(t("Der Anbieter liefert keine Videodatei."))
             val resumed = have > 0 && conn.responseCode == 206 &&
                 conn.getHeaderField("Content-Range").orEmpty().startsWith("bytes $have-")
             var bytes = if (resumed) have else 0L
@@ -71,8 +72,8 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
                     }
                 }
             }
-            if (total in 1..Long.MAX_VALUE && bytes < total) throw IOException("Verbindung abgebrochen.")
-            if (bytes == 0L) throw IOException("Leere Antwort.")
+            if (total in 1..Long.MAX_VALUE && bytes < total) throw IOException(t("Verbindung abgebrochen."))
+            if (bytes == 0L) throw IOException(t("Leere Antwort."))
         } finally {
             conn.disconnect()
         }
@@ -80,7 +81,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
 
     private fun checkSpace(file: File) {
         val free = file.absoluteFile.parentFile?.usableSpace ?: return
-        if (free in 1 until reserve) throw Fatal("Der Speicher ist fast voll.")
+        if (free in 1 until reserve) throw Fatal(t("Der Speicher ist fast voll."))
     }
 
     /** Nimmt auf, bis [until] erreicht ist oder abgebrochen wird. Verbindet bei Aussetzern neu. */
@@ -138,7 +139,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
             var wait = 4_000L
             try {
                 val playlist = HlsPlaylist.parse(Http.get(media))
-                if (playlist.unsupported) throw Fatal("Verschlüsselte Streams lassen sich nicht aufnehmen.")
+                if (playlist.unsupported) throw Fatal(t("Verschlüsselte Streams lassen sich nicht aufnehmen."))
                 wait = (playlist.targetSeconds * 500L).coerceIn(1_000, 6_000)
                 playlist.segments.forEachIndexed { i, segment ->
                     val number = playlist.sequence + i

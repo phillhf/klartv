@@ -121,7 +121,7 @@ fun SettingsScreen(vm: AppViewModel) {
                     is EpgState.Ready -> t("%1 Sendungen, Stand %2", s.count, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(s.time)))
                     is EpgState.Loading -> t("Lade Programmführer … %1 Sendungen", s.count)
                     is EpgState.Error -> t("Programmführer nicht geladen: %1", s.message)
-                    EpgState.None -> t("Dein Anbieter nennt keinen Programmführer.")
+                    EpgState.None -> if (vm.hasEpg) t("Das Programm kommt direkt vom Anbieter.") else t("Dein Anbieter nennt keinen Programmführer.")
                     EpgState.Idle -> t("Wird geladen, sobald die Senderliste da ist.")
                 },
             )

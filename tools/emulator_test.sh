@@ -6,6 +6,11 @@ mkdir -p emulator-out
 adb install -r -g app/build/outputs/apk/mobile/debug/app-mobile-x86_64-debug.apk || exit 1
 adb install -r -g "$(find app/build/outputs/apk/androidTest -name '*.apk' | head -1)" || exit 1
 adb shell appops set $PKG SCHEDULE_EXACT_ALARM allow || true
+# Hinweise des Systems würden die Bildschirmfotos verdecken
+adb shell settings put secure immersive_mode_confirmations confirmed
+adb shell settings put global hide_error_dialogs 1
+adb shell input keyevent KEYCODE_WAKEUP
+adb shell wm dismiss-keyguard
 adb logcat -c
 timeout 1500 adb shell am instrument -w -r $PKG.test/androidx.test.runner.AndroidJUnitRunner > emulator-out/result.txt
 adb logcat -d > emulator-out/logcat.txt

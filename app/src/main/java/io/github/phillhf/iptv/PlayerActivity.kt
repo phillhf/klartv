@@ -2,6 +2,7 @@ package io.github.phillhf.iptv
 
 import android.app.PictureInPictureParams
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
@@ -165,6 +166,10 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         ui.canPip = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
             !packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Auf dem Handy quer, auch wenn die automatische Drehung aus ist
+        if (resources.configuration.smallestScreenWidthDp < 600 && !packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         val overlay = ComposeView(this).apply {

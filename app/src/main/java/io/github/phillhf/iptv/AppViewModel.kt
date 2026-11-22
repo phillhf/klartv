@@ -426,7 +426,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun seriesInfo(s: Stream): Load<SeriesInfo> {
-        val b = backend ?: return Load.Error("Kein Anbieter ausgewählt.")
+        val b = backend ?: return Load.Error(t("Kein Anbieter ausgewählt."))
         return try {
             Load.Ready(withContext(Dispatchers.IO) { b.seriesInfo(s.id) })
         } catch (e: CancellationException) {

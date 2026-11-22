@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.ui
 
+import io.github.phillhf.iptv.t
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -83,9 +84,9 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(Modifier.widthIn(max = 560.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Anbieter hinzufügen", style = MaterialTheme.typography.headlineSmall)
+            Text(t("Anbieter hinzufügen"), style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Trage die Zugangsdaten ein, die du von deinem IPTV-Anbieter bekommen hast. Sie bleiben nur auf diesem Gerät.",
+                t("Trage die Zugangsdaten ein, die du von deinem IPTV-Anbieter bekommen hast. Sie bleiben nur auf diesem Gerät."),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -98,14 +99,14 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 FilterChip(
                     selected = type == SourceType.M3U,
                     onClick = { type = SourceType.M3U },
-                    label = { Text("M3U-Playlist") },
+                    label = { Text(t("M3U-Playlist")) },
                     modifier = Modifier.focusRing(),
                 )
             }
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name (frei wählbar)") },
+                label = { Text(t("Name (frei wählbar)")) },
                 singleLine = true,
                 keyboardOptions = next,
                 modifier = Modifier.fillMaxWidth(),
@@ -114,7 +115,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 OutlinedTextField(
                     value = server,
                     onValueChange = { server = it },
-                    label = { Text("Server, z. B. http://anbieter.example:8080") },
+                    label = { Text(t("Server, z. B. http://anbieter.example:8080")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(),
@@ -122,7 +123,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 OutlinedTextField(
                     value = user,
                     onValueChange = { user = it },
-                    label = { Text("Benutzername") },
+                    label = { Text(t("Benutzername")) },
                     singleLine = true,
                     keyboardOptions = next,
                     modifier = Modifier.fillMaxWidth(),
@@ -130,7 +131,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
-                    label = { Text("Passwort") },
+                    label = { Text(t("Passwort")) },
                     singleLine = true,
                     visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -138,7 +139,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                         IconButton(onClick = { showPass = !showPass }) {
                             Icon(
                                 if (showPass) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (showPass) "Passwort verbergen" else "Passwort zeigen",
+                                contentDescription = if (showPass) t("Passwort verbergen") else t("Passwort zeigen"),
                             )
                         }
                     },
@@ -148,7 +149,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Playlist-Adresse (M3U-URL)") },
+                    label = { Text(t("Playlist-Adresse (M3U-URL)")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
@@ -157,7 +158,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (onCancel != null) {
-                    TextButton(onClick = onCancel, modifier = Modifier.focusRing(Pill)) { Text("Abbrechen") }
+                    TextButton(onClick = onCancel, modifier = Modifier.focusRing(Pill)) { Text(t("Abbrechen")) }
                 }
                 Button(
                     enabled = valid && !busy,
@@ -167,7 +168,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                         error = null
                         val account = Account(
                             id = UUID.randomUUID().toString(),
-                            name = name.trim().ifBlank { if (type == SourceType.XTREAM) normalizeServer(server).substringAfter("://") else "Meine Playlist" },
+                            name = name.trim().ifBlank { if (type == SourceType.XTREAM) normalizeServer(server).substringAfter("://") else t("Meine Playlist") },
                             type = type,
                             server = if (type == SourceType.XTREAM) normalizeServer(server) else "",
                             username = if (type == SourceType.XTREAM) user.trim() else "",
@@ -183,9 +184,9 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                     if (busy) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Prüfe Zugang …")
+                        Text(t("Prüfe Zugang …"))
                     } else {
-                        Text("Anmelden")
+                        Text(t("Anmelden"))
                     }
                 }
             }

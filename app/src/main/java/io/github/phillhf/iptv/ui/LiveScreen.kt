@@ -113,10 +113,10 @@ class LivePreview(private val context: Context) {
 fun LiveScreen(vm: AppViewModel, wide: Boolean) {
     LaunchedEffect(vm.active?.id) { vm.ensureLoaded(Kind.LIVE) }
     when (val state = vm.catalog(Kind.LIVE)) {
-        Load.Idle, Load.Loading -> LoadingBox("Lade Sender …")
+        Load.Idle, Load.Loading -> LoadingBox(t("Lade Sender …"))
         is Load.Error -> ErrorBox(state.message) { vm.ensureLoaded(Kind.LIVE, force = true) }
         is Load.Ready -> if (state.value.streams.isEmpty()) {
-            Centered { Text("Dein Anbieter hat keine Live-Sender.") }
+            Centered { Text(t("Dein Anbieter hat keine Live-Sender.")) }
         } else {
             LiveView(vm, state.value, wide)
         }
@@ -254,7 +254,7 @@ private fun PreviewPane(vm: AppViewModel, stream: Stream, preview: LivePreview) 
         }
         if (now != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("JETZT", style = MaterialTheme.typography.labelLarge, color = Klar.Accent)
+                Text(t("JETZT"), style = MaterialTheme.typography.labelLarge, color = Klar.Accent)
                 Text("   ${timeRange(now.start, now.end)}", style = MaterialTheme.typography.labelLarge, color = Klar.TextDim)
             }
             Text(now.title, style = MaterialTheme.typography.titleLarge)
@@ -263,16 +263,16 @@ private fun PreviewPane(vm: AppViewModel, stream: Stream, preview: LivePreview) 
                 Text(now.description, style = MaterialTheme.typography.bodyMedium, color = Klar.Text.copy(alpha = 0.8f), maxLines = 4, overflow = TextOverflow.Ellipsis)
             }
         } else if (!vm.hasEpg) {
-            Text("Dein Anbieter liefert für diesen Sender kein Programm.", color = Klar.TextDim)
+            Text(t("Dein Anbieter liefert für diesen Sender kein Programm."), color = Klar.TextDim)
         }
         if (next != null) {
             Row {
-                Text("DANACH", style = MaterialTheme.typography.labelLarge, color = Klar.Accent2)
+                Text(t("DANACH"), style = MaterialTheme.typography.labelLarge, color = Klar.Accent2)
                 Text("   ${clockTime(next.start)}  ${next.title}", style = MaterialTheme.typography.labelLarge, color = Klar.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text("OK: Vollbild  ·  Im Vollbild ▲ ▼: Sender wechseln", style = MaterialTheme.typography.labelMedium, color = Klar.TextDim)
+        Text(t("OK: Vollbild  ·  Im Vollbild ▲ ▼: Sender wechseln"), style = MaterialTheme.typography.labelMedium, color = Klar.TextDim)
     }
 }
 

@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
 import io.github.phillhf.iptv.EpgState
@@ -200,7 +201,7 @@ private fun EpgNotice(vm: AppViewModel) {
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
-        EpgState.None -> Text(
+        EpgState.None -> if (!vm.hasEpg) Text(
             t("Dein Anbieter nennt keinen Programmführer. Du kannst in den Einstellungen eine XMLTV-Adresse eintragen."),
             style = MaterialTheme.typography.bodySmall, color = Klar.TextDim,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -234,7 +235,7 @@ private fun GuideRow(
         }
         Box(Modifier.weight(1f).fillMaxHeight().horizontalScroll(scroll)) {
             Row(Modifier.fillMaxHeight()) {
-                cells?.forEach { c -> Cell(s, c, now, onOpen) } ?: Spacer(Modifier.width(MinuteWidth * ((to - from) / MINUTE).toInt()))
+                cells?.forEach { c -> Cell(s, c, now, MinuteWidth * ((c.start - from) / MINUTE.toFloat()), scroll, onOpen) } ?: Spacer(Modifier.width(MinuteWidth * ((to - from) / MINUTE).toInt()))
             }
             if (now in from until to) {
                 Box(Modifier.offset(x = MinuteWidth * ((now - from) / MINUTE).toFloat()).width(2.dp).fillMaxHeight().background(Klar.Live))
@@ -244,7 +245,7 @@ private fun GuideRow(
 }
 
 @Composable
-private fun Cell(s: Stream, c: GuideCell, now: Long, onOpen: (EpgEntry) -> Unit) {
+private fun Cell(s: Stream, c: GuideCell, now: Long, x: Dp, scroll: ScrollState, onOpen: (EpgEntry) -> Unit) {
     val width = MinuteWidth * ((c.end - c.start) / MINUTE.toFloat())
     val e = c.entry
     if (e == null) {
@@ -273,14 +274,19 @@ private fun Cell(s: Stream, c: GuideCell, now: Long, onOpen: (EpgEntry) -> Unit)
             .clickable { onOpen(e) }
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Titel bleibt sichtbar, auch wenn der Anfang der Sendung links aus dem Bild gerollt ist
+        val stick = Modifier.offset {
+            val shift = scroll.value - x.roundToPx()
+            IntOffset(shift.coerceIn(0, (width.roundToPx() - 72.dp.roundToPx()).coerceAtLeast(0)), 0)
+        }
+        Row(stick, verticalAlignment = Alignment.CenterVertically) {
             if (replay) Icon(Icons.Filled.Replay, contentDescription = t("Nachschauen möglich"), tint = Klar.Accent, modifier = Modifier.height(16.dp).padding(end = 4.dp))
             Text(
                 e.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge,
                 color = if (e.end <= now && !replay) Klar.TextDim else Klar.Text,
             )
         }
-        Text(timeRange(e.start, e.end), maxLines = 1, overflow = TextOverflow.Clip, style = MaterialTheme.typography.labelSmall, color = Klar.TextDim)
+        Text(timeRange(e.start, e.end), stick, maxLines = 1, overflow = TextOverflow.Clip, style = MaterialTheme.typography.labelSmall, color = Klar.TextDim)
         if (running) ProgressLine(epgProgress(e, now), Modifier.fillMaxWidth().padding(top = 4.dp))
     }
 }

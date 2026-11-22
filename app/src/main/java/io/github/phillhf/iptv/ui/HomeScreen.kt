@@ -227,10 +227,10 @@ private fun TabContent(vm: AppViewModel, wide: Boolean) {
 private fun MediaScreen(vm: AppViewModel, kind: Kind, wide: Boolean) {
     LaunchedEffect(kind, vm.active?.id) { vm.ensureLoaded(kind) }
     when (val state = vm.catalog(kind)) {
-        Load.Idle, Load.Loading -> LoadingBox(if (kind == Kind.MOVIE) "Lade Filme …" else "Lade Serien …")
+        Load.Idle, Load.Loading -> LoadingBox(if (kind == Kind.MOVIE) t("Lade Filme …") else t("Lade Serien …"))
         is Load.Error -> ErrorBox(state.message) { vm.ensureLoaded(kind, force = true) }
         is Load.Ready -> when {
-            state.value.streams.isEmpty() -> Centered { Text("Dein Anbieter hat hier keine Inhalte.") }
+            state.value.streams.isEmpty() -> Centered { Text(t("Dein Anbieter hat hier keine Inhalte.")) }
             wide -> MediaWide(vm, kind, state.value)
             else -> MediaPhone(vm, kind, state.value)
         }
@@ -309,7 +309,7 @@ private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
     val list = remember(catalog, current) { catalog.inCategory(current) }
     Column(Modifier.fillMaxSize()) {
         Text(
-            if (kind == Kind.MOVIE) "Filme" else "Serien",
+            if (kind == Kind.MOVIE) t("Filme") else t("Serien"),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp),
         )
@@ -344,9 +344,9 @@ private fun FavoritesScreen(vm: AppViewModel, wide: Boolean) {
         val resume = vm.shownContinue
         if (resume.isNotEmpty()) add(ShelfData(t("Weiterschauen"), ShelfStyle.WIDE, resume.map { Tile.Resume(it) }))
         fun favs(kind: Kind) = vm.favoriteStreams(kind).map { Tile.Item(it) }
-        favs(Kind.LIVE).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Sender", ShelfStyle.CHANNEL, it)) }
-        favs(Kind.MOVIE).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Filme", ShelfStyle.POSTER, it)) }
-        favs(Kind.SERIES).takeIf { it.isNotEmpty() }?.let { add(ShelfData("Serien", ShelfStyle.POSTER, it)) }
+        favs(Kind.LIVE).takeIf { it.isNotEmpty() }?.let { add(ShelfData(t("Sender"), ShelfStyle.CHANNEL, it)) }
+        favs(Kind.MOVIE).takeIf { it.isNotEmpty() }?.let { add(ShelfData(t("Filme"), ShelfStyle.POSTER, it)) }
+        favs(Kind.SERIES).takeIf { it.isNotEmpty() }?.let { add(ShelfData(t("Serien"), ShelfStyle.POSTER, it)) }
     }
     val side = if (wide) 48.dp else 16.dp
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 24.dp, bottom = 32.dp)) {
@@ -361,7 +361,7 @@ private fun FavoritesScreen(vm: AppViewModel, wide: Boolean) {
         if (!loading && shelves.isEmpty()) {
             item {
                 Text(
-                    "Noch nichts gemerkt. Markiere Sender mit dem Stern oder wähle bei Filmen und Serien „Zu Favoriten“.",
+                    t("Noch nichts gemerkt. Markiere Sender mit dem Stern oder wähle bei Filmen und Serien „Zu Favoriten“."),
                     modifier = Modifier.padding(horizontal = side, vertical = 24.dp),
                     color = Klar.TextDim,
                 )
@@ -418,9 +418,9 @@ private fun SearchScreen(vm: AppViewModel, wide: Boolean) {
                 } else {
                     ShelfData(
                         when (kind) {
-                            Kind.LIVE -> "Sender"
-                            Kind.MOVIE -> "Filme"
-                            Kind.SERIES -> "Serien"
+                            Kind.LIVE -> t("Sender")
+                            Kind.MOVIE -> t("Filme")
+                            Kind.SERIES -> t("Serien")
                         },
                         if (kind == Kind.LIVE) ShelfStyle.CHANNEL else ShelfStyle.POSTER,
                         hits.map { Tile.Item(it) },
@@ -435,7 +435,7 @@ private fun SearchScreen(vm: AppViewModel, wide: Boolean) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Sender, Filme oder Serien suchen") },
+                placeholder = { Text(t("Sender, Filme oder Serien suchen")) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 singleLine = true,
                 shape = Pill,
@@ -454,7 +454,7 @@ private fun SearchScreen(vm: AppViewModel, wide: Boolean) {
         item { Spacer(Modifier.height(20.dp)) }
         items(results) { ShelfView(vm, it, side, wide) {} }
         if (q.length >= 2 && results.isEmpty()) {
-            item { Text("Nichts gefunden für „$q“.", modifier = Modifier.padding(horizontal = side), color = Klar.TextDim) }
+            item { Text(t("Nichts gefunden für „%1“.", q), modifier = Modifier.padding(horizontal = side), color = Klar.TextDim) }
         }
     }
 }

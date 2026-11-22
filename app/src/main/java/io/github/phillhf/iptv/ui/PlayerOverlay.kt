@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.ui
 
+import io.github.phillhf.iptv.t
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -86,7 +87,7 @@ fun PlayerOverlay(item: PlayItem?, epg: List<EpgEntry>, visible: Boolean, messag
                 }
                 if (current != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("JETZT", style = MaterialTheme.typography.labelLarge, color = Klar.Accent)
+                        Text(t("JETZT"), style = MaterialTheme.typography.labelLarge, color = Klar.Accent)
                         Text("   ${timeRange(current.start, current.end)}", style = MaterialTheme.typography.labelLarge, color = Klar.TextDim)
                     }
                     Text(current.title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -94,7 +95,7 @@ fun PlayerOverlay(item: PlayItem?, epg: List<EpgEntry>, visible: Boolean, messag
                 }
                 if (next != null) {
                     Row {
-                        Text("DANACH", style = MaterialTheme.typography.labelLarge, color = Klar.Accent2)
+                        Text(t("DANACH"), style = MaterialTheme.typography.labelLarge, color = Klar.Accent2)
                         Text(
                             "   ${clockTime(next.start)}  ${next.title}",
                             style = MaterialTheme.typography.labelLarge,

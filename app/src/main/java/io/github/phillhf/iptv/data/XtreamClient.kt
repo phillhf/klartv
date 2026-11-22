@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.data
 
+import io.github.phillhf.iptv.t
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -34,12 +35,12 @@ class XtreamClient(server: String, private val username: String, private val pas
     }
 
     fun login(): AccountStatus {
-        val root = api() as? JSONObject ?: throw IOException("Unerwartete Antwort vom Server. Ist die Adresse richtig?")
-        val info = root.optJSONObject("user_info") ?: throw IOException("Unerwartete Antwort vom Server. Ist die Adresse richtig?")
-        if (info.optInt("auth", 0) != 1) throw IOException("Benutzername oder Passwort falsch.")
+        val root = api() as? JSONObject ?: throw IOException(t("Unerwartete Antwort vom Server. Ist die Adresse richtig?"))
+        val info = root.optJSONObject("user_info") ?: throw IOException(t("Unerwartete Antwort vom Server. Ist die Adresse richtig?"))
+        if (info.optInt("auth", 0) != 1) throw IOException(t("Benutzername oder Passwort falsch."))
         val status = info.optStringOrNull("status")
         if (status != null && !status.equals("Active", ignoreCase = true)) {
-            throw IOException("Das Konto ist nicht aktiv (Status: $status).")
+            throw IOException(t("Das Konto ist nicht aktiv (Status: %1).", status))
         }
         return AccountStatus(
             status = status,
@@ -134,7 +135,7 @@ class XtreamClient(server: String, private val username: String, private val pas
 
     fun seriesInfo(seriesId: String): SeriesInfo {
         val root = api("&action=get_series_info&series_id=${queryPart(seriesId)}") as? JSONObject
-            ?: throw IOException("Serie nicht gefunden.")
+            ?: throw IOException(t("Serie nicht gefunden."))
         val info = root.optJSONObject("info")
         val seasons = sortedMapOf<Int, MutableList<Episode>>()
 

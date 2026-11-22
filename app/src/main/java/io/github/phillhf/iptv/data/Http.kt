@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.data
 
+import io.github.phillhf.iptv.t
 import org.json.JSONException
 import java.io.IOException
 import java.net.ConnectException
@@ -39,28 +40,28 @@ object Http {
             try {
                 val code = conn.responseCode
                 if (code in 300..399) {
-                    val location = conn.getHeaderField("Location") ?: throw IOException("Weiterleitung ohne Ziel.")
+                    val location = conn.getHeaderField("Location") ?: throw IOException(t("Weiterleitung ohne Ziel."))
                     url = URL(url, location)
                     return@repeat
                 }
-                if (code == 401 || code == 403) throw IOException("Zugang verweigert (Fehler $code). Zugangsdaten prüfen.")
-                if (code !in 200..299) throw IOException("Der Server meldet Fehler $code.")
+                if (code == 401 || code == 403) throw IOException(t("Zugang verweigert (Fehler %1). Zugangsdaten prüfen.", code))
+                if (code !in 200..299) throw IOException(t("Der Server meldet Fehler %1.", code))
                 keep = true
                 return conn
             } finally {
                 if (!keep) conn.disconnect()
             }
         }
-        throw IOException("Zu viele Weiterleitungen.")
+        throw IOException(t("Zu viele Weiterleitungen."))
     }
 }
 
 fun friendlyError(e: Throwable): String = when (e) {
-    is UnknownHostException -> "Server nicht gefunden. Adresse und Internetverbindung prüfen."
-    is SocketTimeoutException -> "Der Server antwortet nicht (Zeitüberschreitung)."
-    is ConnectException -> "Keine Verbindung zum Server."
-    is SSLException -> "Sichere Verbindung fehlgeschlagen."
-    is JSONException -> "Unerwartete Antwort vom Server."
-    is OutOfMemoryError -> "Die Liste ist zu groß für dieses Gerät."
+    is UnknownHostException -> t("Server nicht gefunden. Adresse und Internetverbindung prüfen.")
+    is SocketTimeoutException -> t("Der Server antwortet nicht (Zeitüberschreitung).")
+    is ConnectException -> t("Keine Verbindung zum Server.")
+    is SSLException -> t("Sichere Verbindung fehlgeschlagen.")
+    is JSONException -> t("Unerwartete Antwort vom Server.")
+    is OutOfMemoryError -> t("Die Liste ist zu groß für dieses Gerät.")
     else -> e.message ?: e.javaClass.simpleName
 }

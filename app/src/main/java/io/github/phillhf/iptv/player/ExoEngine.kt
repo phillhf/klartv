@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.player
 
+import io.github.phillhf.iptv.t
 import android.content.Context
 import android.graphics.Color
 import android.net.Uri
@@ -66,7 +67,7 @@ class ExoEngine(context: Context) : Engine {
             val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
             if (audio.isNotEmpty() && audio.none { it.isSupported } && !reportedSilent) {
                 reportedSilent = true
-                listener?.onError("Tonformat nicht unterstützt", unsupported = true)
+                listener?.onError(t("Tonformat nicht unterstützt"), unsupported = true)
             }
         }
 

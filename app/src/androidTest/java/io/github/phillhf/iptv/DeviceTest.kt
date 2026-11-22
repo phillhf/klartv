@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -104,6 +105,32 @@ class DeviceTest {
         File(shots, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
     }
 
+    /** Alle Texte, die gerade wirklich auf dem Bildschirm stehen (Text und Beschreibung von Knöpfen). */
+    private fun onScreen(): List<String> {
+        val out = ArrayList<String>()
+        fun walk(n: AccessibilityNodeInfo?) {
+            n ?: return
+            if (n.isVisibleToUser) {
+                n.text?.let { out += it.toString() }
+                n.contentDescription?.let { out += it.toString() }
+            }
+            for (i in 0 until n.childCount) walk(n.getChild(i))
+        }
+        walk(ins.uiAutomation.rootInActiveWindow)
+        return out
+    }
+
+    private fun expectOnScreen(vararg texts: String) {
+        val end = System.currentTimeMillis() + 12_000
+        var seen = emptyList<String>()
+        while (System.currentTimeMillis() < end) {
+            seen = onScreen()
+            if (texts.all { t -> seen.any { it.contains(t) } }) return
+            Thread.sleep(300)
+        }
+        throw AssertionError("Nicht sichtbar: ${texts.filter { t -> seen.none { it.contains(t) } }}, sichtbar: $seen")
+    }
+
     private fun play(vararg items: PlayItem, index: Int = 0): PlayerActivity {
         PlaybackQueue.items = items.toList()
         PlaybackQueue.startIndex = index
@@ -132,6 +159,8 @@ class DeviceTest {
     fun a1_liveTs() {
         val p = play(liveTs, liveHls)
         expectPlaying(p, "ExoPlayer")
+        main { p.showControls(true) }
+        expectOnScreen("Alpha HD", "Aufnehmen")
         shot("player_live")
         main { p.step(1) }
         waitFor("Umschalten") { p.ui.index == 1 }
@@ -146,7 +175,11 @@ class DeviceTest {
         main { p.seekTo(60_000) }
         waitFor("gesprungen", 20, { state(p) }) { p.ui.playing && p.ui.position in 60_000..75_000 }
         main { p.showControls(true) }
+        expectOnScreen("Sternenstaub", "Untertitel", "Bild im Bild")
         shot("player_film")
+        main { p.openPanel(PlayerPanel.SPEED) }
+        expectOnScreen("1.5×")
+        main { p.openPanel(null) }
         main { p.finish() }
         waitFor("Position gemerkt", 10) { Library(app, "test").position("MOVIE:200") > 55_000 }
         assertTrue(Library(app, "test").continueList().any { it.key == "MOVIE:200" })
@@ -277,6 +310,7 @@ class DeviceTest {
         shot("live")
         main { vm.tab = Tab.GUIDE }
         Thread.sleep(3000)
+        expectOnScreen("Programm", "Heute", "Alpha HD")
         shot("programm")
         main { vm.tab = Tab.MEDIA }
         shot("mediathek")
@@ -304,6 +338,7 @@ class DeviceTest {
         assertTrue(main { vm.hidden("LIVE:103") })
         assertEquals(false, main { AppSettings.checkPin("0000") })
         main { vm.chooseCategory(Kind.LIVE, "2") }
+        expectOnScreen("PIN eingeben")
         shot("pin")
         val action = main { vm.pinRequest }
         assertNotNull(action)

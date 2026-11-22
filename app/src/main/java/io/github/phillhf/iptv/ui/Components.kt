@@ -344,7 +344,7 @@ fun Centered(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-fun LoadingBox(text: String = "Lade Inhalte …") {
+fun LoadingBox(text: String = t("Lade Inhalte …")) {
     Centered {
         CircularProgressIndicator(color = Klar.Accent)
         Spacer(Modifier.height(16.dp))
@@ -357,7 +357,7 @@ fun ErrorBox(message: String, onRetry: () -> Unit) {
     Centered {
         Text(message, textAlign = TextAlign.Center)
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onRetry, modifier = Modifier.focusRing(Pill)) { Text("Erneut versuchen") }
+        Button(onClick = onRetry, modifier = Modifier.focusRing(Pill)) { Text(t("Erneut versuchen")) }
     }
 }
 
@@ -369,7 +369,7 @@ fun TitleBar(title: String, onBack: (() -> Unit)?) {
     ) {
         if (onBack != null) {
             IconButton(onClick = onBack, modifier = Modifier.focusRing(CircleShape)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = t("Zurück"))
             }
         }
         Text(
@@ -478,7 +478,7 @@ fun FavoriteStar(favorite: Boolean, onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.focusRing(CircleShape)) {
         Icon(
             if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-            contentDescription = if (favorite) "Aus Favoriten entfernen" else "Zu Favoriten",
+            contentDescription = if (favorite) t("Aus Favoriten entfernen") else t("Zu Favoriten"),
             tint = if (favorite) Klar.Gold else Klar.TextDim,
         )
     }
@@ -515,9 +515,9 @@ fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, progr
 }
 
 fun kindLabel(kind: Kind) = when (kind) {
-    Kind.LIVE -> "Live-TV"
-    Kind.MOVIE -> "Film"
-    Kind.SERIES -> "Serie"
+    Kind.LIVE -> t("Live-TV")
+    Kind.MOVIE -> t("Film")
+    Kind.SERIES -> t("Serie")
 }
 
 fun formatTime(ms: Long): String {
@@ -529,4 +529,4 @@ fun formatTime(ms: Long): String {
 }
 
 fun minutesLeft(position: Long, duration: Long): String? =
-    if (duration > 0) "noch ${((duration - position) / 60_000).coerceAtLeast(1)} Min." else null
+    if (duration > 0) t("noch %1 Min.", ((duration - position) / 60_000).coerceAtLeast(1)) else null

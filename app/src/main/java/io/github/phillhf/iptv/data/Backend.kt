@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv.data
 
+import io.github.phillhf.iptv.t
 import java.io.IOException
 
 /**
@@ -58,7 +59,7 @@ class M3uBackend(private val account: Account) : Backend {
             playlistEpg = M3uParser.epgUrl(text)
             M3uParser.parse(text)
         }.also {
-            if (it.isEmpty()) throw IOException("Die Playlist enthält keine Einträge.")
+            if (it.isEmpty()) throw IOException(t("Die Playlist enthält keine Einträge."))
             cache = it
         }
     }
@@ -72,7 +73,7 @@ class M3uBackend(private val account: Account) : Backend {
 
     override fun vodInfo(id: String): VodInfo? = null
 
-    override fun seriesInfo(id: String): SeriesInfo = throw IOException("Serien gibt es nur bei Xtream-Anbietern.")
+    override fun seriesInfo(id: String): SeriesInfo = throw IOException(t("Serien gibt es nur bei Xtream-Anbietern."))
 
     override fun epg(streamId: String): List<EpgEntry> = emptyList()
 

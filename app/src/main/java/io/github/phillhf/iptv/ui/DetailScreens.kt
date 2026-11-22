@@ -84,7 +84,7 @@ private fun FavoriteButton(vm: AppViewModel, stream: Stream) {
     OutlinedButton(onClick = { vm.toggleFavorite(stream) }, modifier = Modifier.focusRing(Pill)) {
         Icon(if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder, contentDescription = null, tint = if (favorite) Klar.Gold else Klar.Text)
         Spacer(Modifier.width(8.dp))
-        Text(if (favorite) "Gemerkt" else "Merken")
+        Text(if (favorite) t("Gemerkt") else t("Merken"))
     }
 }
 
@@ -103,9 +103,9 @@ private fun PrimaryButton(text: String, icon: androidx.compose.ui.graphics.vecto
 
 @Composable
 private fun Credits(director: String?, cast: String?) {
-    if (!director.isNullOrBlank()) Text("Regie: $director", style = MaterialTheme.typography.bodyMedium, color = Klar.TextDim)
+    if (!director.isNullOrBlank()) Text(t("Regie: %1", director), style = MaterialTheme.typography.bodyMedium, color = Klar.TextDim)
     if (!cast.isNullOrBlank()) {
-        Text("Mit: $cast", style = MaterialTheme.typography.bodyMedium, color = Klar.TextDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(t("Mit: %1", cast), style = MaterialTheme.typography.bodyMedium, color = Klar.TextDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -222,7 +222,7 @@ private fun SimilarShelf(vm: AppViewModel, stream: Stream, wide: Boolean) {
     val similar = remember(catalog, stream.key) { catalog.inCategory(stream.categoryId).filter { it.key != stream.key }.take(20) }
     if (similar.isEmpty()) return
     Spacer(Modifier.padding(top = 20.dp))
-    ShelfView(vm, ShelfData("Mehr davon", ShelfStyle.POSTER, similar.map { Tile.Item(it) }), if (wide) 48.dp else 16.dp, wide) {}
+    ShelfView(vm, ShelfData(t("Mehr davon"), ShelfStyle.POSTER, similar.map { Tile.Item(it) }), if (wide) 48.dp else 16.dp, wide) {}
 }
 
 @Composable
@@ -256,16 +256,16 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
                     cast = if (more?.people.isNullOrEmpty()) info?.cast else null,
                 ) {
                     if (resume > 0) {
-                        PrimaryButton("Fortsetzen bei ${formatTime(resume)}", Icons.Filled.PlayArrow, Modifier.focusRequester(firstButton)) {
+                        PrimaryButton(t("Fortsetzen bei %1", formatTime(resume)), Icons.Filled.PlayArrow, Modifier.focusRequester(firstButton)) {
                             vm.playMovie(context, stream, fromStart = false)
                         }
                         OutlinedButton(onClick = { vm.playMovie(context, stream, fromStart = true) }, modifier = Modifier.focusRing(Pill)) {
                             Icon(Icons.Filled.Replay, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Von vorn")
+                            Text(t("Von vorn"))
                         }
                     } else {
-                        PrimaryButton("Abspielen", Icons.Filled.PlayArrow, Modifier.focusRequester(firstButton)) {
+                        PrimaryButton(t("Abspielen"), Icons.Filled.PlayArrow, Modifier.focusRequester(firstButton)) {
                             vm.playMovie(context, stream, fromStart = true)
                         }
                     }
@@ -314,7 +314,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                     meta = metaLine(
                         info?.year ?: stream.year,
                         info?.genre ?: stream.genre,
-                        if (seasons.isNotEmpty()) "${seasons.size} ${if (seasons.size == 1) "Staffel" else "Staffeln"}" else null,
+                        if (seasons.isNotEmpty()) (if (seasons.size == 1) t("%1 Staffel", 1) else t("%1 Staffeln", seasons.size)) else null,
                         stream.rating?.let { "★ $it" },
                     ),
                     plot = info?.plot ?: stream.plot ?: more?.plot,
@@ -326,7 +326,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                         val resumeIndex = episodes.indexOfFirst { vm.position(it.key) > 0 }.takeIf { it >= 0 } ?: 0
                         val e = episodes[resumeIndex]
                         PrimaryButton(
-                            if (vm.position(e.key) > 0) "S${e.season} E${e.number} fortsetzen" else "S${e.season} E${e.number} abspielen",
+                            if (vm.position(e.key) > 0) t("%1 fortsetzen", "S${e.season} E${e.number}") else t("%1 abspielen", "S${e.season} E${e.number}"),
                             Icons.Filled.PlayArrow,
                             Modifier.focusRequester(firstButton),
                         ) { vm.playEpisodes(context, stream, info, episodes, resumeIndex) }
@@ -341,7 +341,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                 }
                 is Load.Error -> item { Text(s.message, modifier = Modifier.padding(32.dp)) }
                 is Load.Ready -> {
-                    if (seasons.isEmpty()) item { Text("Keine Folgen vorhanden.", modifier = Modifier.padding(32.dp)) }
+                    if (seasons.isEmpty()) item { Text(t("Keine Folgen vorhanden."), modifier = Modifier.padding(32.dp)) }
                     if (seasons.size > 1) {
                         item {
                             LazyRow(
@@ -349,7 +349,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(seasons) { n ->
-                                    SeasonChip(if (n == 0) "Folgen" else "Staffel $n", n == selected) { season = n }
+                                    SeasonChip(if (n == 0) t("Folgen") else t("Staffel %1", n), n == selected) { season = n }
                                 }
                             }
                         }
@@ -363,7 +363,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                             EpisodeRow(
                                 modifier = Modifier.weight(1f),
                                 title = "${e.number}. ${e.title}",
-                                meta = metaLine(e.duration, if (position > 0) "weiter bei ${formatTime(position)}" else null),
+                                meta = metaLine(e.duration, if (position > 0) t("weiter bei %1", formatTime(position)) else null),
                                 plot = e.plot,
                                 image = e.image ?: s.value.backdrop ?: s.value.cover ?: stream.logo,
                                 progress = progress,
