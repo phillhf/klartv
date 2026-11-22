@@ -6,6 +6,12 @@ Ein IPTV-Player für Android ohne Werbung und ohne Tracking: für Handy, Tablet,
 Klar TV **enthält keine Sender und keine Inhalte**. Die App spielt nur ab, was dein eigener IPTV-Anbieter
 bereitstellt. Zugangsdaten, Favoriten und Verlauf bleiben auf dem Gerät.
 
+## Herunterladen
+
+Auf der Seite [Releases](https://github.com/phillhf/klartv/releases/latest) steht im Dateinamen, für welches Gerät
+die Datei ist: `Handy-Tablet`, `Fernseher-TV-Stick` oder `Emulator-PC`. Meldet dein Gerät „App nicht installiert“ oder
+„nicht kompatibel“, nimm die jeweils andere der beiden ersten Dateien. `NUR-PLAY-STORE` lässt sich nicht installieren.
+
 ## Funktionen
 
 - Anmeldung mit **Xtream Codes** oder **M3U-Playlist**, mehrere Anbieter umschaltbar

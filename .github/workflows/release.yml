@@ -81,9 +81,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          cp app/build/outputs/bundle/mobileRelease/app-mobile-release.aab "KlarTV-$VERSION.aab"
-          cp app/build/outputs/bundle/carRelease/app-car-release.aab "KlarTV-$VERSION-Auto.aab"
-          for abi in arm64-v8a armeabi-v7a x86_64; do
-            cp "app/build/outputs/apk/mobile/release/app-mobile-$abi-release.apk" "KlarTV-$VERSION-$abi.apk"
-          done
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk
+          # Die Namen sagen, für welches Gerät die Datei ist. Die Links in release-notes.md müssen dazu passen.
+          cp app/build/outputs/bundle/mobileRelease/app-mobile-release.aab "KlarTV-$VERSION-NUR-PLAY-STORE.aab"
+          cp app/build/outputs/bundle/carRelease/app-car-release.aab "KlarTV-$VERSION-NUR-PLAY-STORE-Auto.aab"
+          apk=app/build/outputs/apk/mobile/release/app-mobile
+          cp "$apk-arm64-v8a-release.apk" "KlarTV-$VERSION-Handy-Tablet.apk"
+          cp "$apk-armeabi-v7a-release.apk" "KlarTV-$VERSION-Fernseher-TV-Stick.apk"
+          cp "$apk-x86_64-release.apk" "KlarTV-$VERSION-Emulator-PC.apk"
+          sed "s/@V@/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes --notes-file "$RUNNER_TEMP/notes.md" KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk
