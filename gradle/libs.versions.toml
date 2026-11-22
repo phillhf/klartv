@@ -10,6 +10,8 @@ coil = "3.6.3"
 vlc = "3.7.7"
 cast = "23.0.0"
 mediarouter = "1.9.0"
+# Die Google-Dienste bringen sonst das veraltete fragment 1.1.0 mit
+fragment = "1.8.9"
 testRunner = "1.7.0"
 testExt = "1.3.0"
 junit = "4.13.2"
@@ -30,6 +32,7 @@ media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", versi
 media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exoplayer-hls", version.ref = "media3" }
 vlc = { group = "org.videolan.android", name = "libvlc-all", version.ref = "vlc" }
 cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "cast" }
+androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
 androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "testRunner" }
 androidx-test-ext = { group = "androidx.test.ext", name = "junit", version.ref = "testExt" }

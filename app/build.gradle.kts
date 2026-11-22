@@ -125,6 +125,7 @@ dependencies {
     // Übertragen auf Chromecast und Google TV
     implementation(libs.cast.framework)
     implementation(libs.androidx.mediarouter)
+    implementation(libs.androidx.fragment)
 
     // Senderlogos und Filmplakate
     implementation(libs.coil.compose)
