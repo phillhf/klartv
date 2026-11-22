@@ -13,14 +13,16 @@ adb shell settings put global hide_error_dialogs 1
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb logcat -c
-timeout 1200 adb shell am instrument -w -r -e class $PKG_CLASS.DeviceTest $PKG.test/androidx.test.runner.AndroidJUnitRunner > emulator-out/result.txt
-# Zweiter Durchgang im Fernsehformat, nur mit Fernbedienungstasten
+# Durchgang im Fernsehformat, nur mit Fernbedienungstasten
 adb shell wm size 1920x1080
 adb shell wm density 320
 sleep 3
 timeout 600 adb shell am instrument -w -r -e class $PKG_CLASS.TvTest $PKG.test/androidx.test.runner.AndroidJUnitRunner > emulator-out/result_tv.txt
 adb shell wm size reset
 adb shell wm density reset
+sleep 3
+# Durchgang im Handyformat
+timeout 1200 adb shell am instrument -w -r -e class $PKG_CLASS.DeviceTest $PKG.test/androidx.test.runner.AndroidJUnitRunner > emulator-out/result.txt
 adb logcat -d > emulator-out/logcat.txt
 adb pull /sdcard/Android/data/$PKG/files/shots emulator-out/ || true
 grep -E "INSTRUMENTATION_STATUS: (test|stack)|INSTRUMENTATION_STATUS_CODE: -[12]|^(OK|FAILURES|Tests run)" emulator-out/result.txt emulator-out/result_tv.txt | tail -80

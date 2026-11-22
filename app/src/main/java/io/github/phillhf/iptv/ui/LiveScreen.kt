@@ -308,6 +308,7 @@ private fun PreviewVideo(preview: LivePreview, url: String, modifier: Modifier) 
             PlayerView(ctx).apply {
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                setEnableComposeSurfaceSyncWorkaround(true)
                 isFocusable = false
                 descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             }

@@ -100,6 +100,7 @@ abstract class DeviceBase {
 
     /** Alle Texte, die gerade wirklich auf dem Bildschirm stehen (Text und Beschreibung von Knöpfen). */
     protected fun onScreen(): List<String> {
+        if (Build.VERSION.SDK_INT >= 34) ins.uiAutomation.clearCache()
         val out = ArrayList<String>()
         fun walk(n: AccessibilityNodeInfo?) {
             n ?: return

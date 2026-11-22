@@ -122,7 +122,8 @@ fun PlayerScreen(ui: PlayerUi, actions: PlayerActions) {
 private fun Controls(ui: PlayerUi, actions: PlayerActions) {
     val item = ui.item ?: return
     val play = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { play.requestFocus() } }
+    val seek = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { if (ui.seeking) seek.requestFocus() else play.requestFocus() } }
     val (now, next) = currentAndNext(ui.epg)
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.75f), 0.3f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f)))) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -140,7 +141,7 @@ private fun Controls(ui: PlayerUi, actions: PlayerActions) {
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp)) {
             if (ui.duration > 0) {
-                SeekBar(ui, actions)
+                SeekBar(ui, actions, seek)
             } else if (now != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(clockTime(now.start), style = MaterialTheme.typography.labelLarge)
@@ -189,7 +190,7 @@ private fun Controls(ui: PlayerUi, actions: PlayerActions) {
 }
 
 @Composable
-private fun SeekBar(ui: PlayerUi, actions: PlayerActions) {
+private fun SeekBar(ui: PlayerUi, actions: PlayerActions, focus: FocusRequester) {
     var dragging by remember { mutableStateOf(false) }
     var value by remember { mutableFloatStateOf(0f) }
     var focused by remember { mutableStateOf(false) }
@@ -214,15 +215,17 @@ private fun SeekBar(ui: PlayerUi, actions: PlayerActions) {
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 12.dp)
+                .focusRequester(focus)
                 .onFocusChanged { focused = it.hasFocus }
                 // Mit der Fernbedienung in festen Schritten springen statt in Prozent
                 .onPreviewKeyEvent {
-                    val step = when (it.key) {
-                        Key.DirectionLeft -> -10_000L
-                        Key.DirectionRight -> 10_000L
+                    val down = it.type == KeyEventType.KeyDown
+                    when (it.key) {
+                        Key.DirectionLeft -> if (down) actions.seekBy(-10_000L)
+                        Key.DirectionRight -> if (down) actions.seekBy(10_000L)
+                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> if (down) actions.togglePlay()
                         else -> return@onPreviewKeyEvent false
                     }
-                    if (it.type == KeyEventType.KeyDown) actions.seekBy(step)
                     true
                 },
         )

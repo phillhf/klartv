@@ -30,6 +30,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarViewDay
 import androidx.compose.material.icons.filled.Delete
@@ -150,6 +152,8 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
                 },
             )
             .onFocusChanged { expanded = it.hasFocus }
+            // Handy quer: Die Leiste ist höher als der Bildschirm
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -163,7 +167,7 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
             }
         }
         Tab.entries.forEach { item ->
-            if (item == Tab.SETTINGS) Spacer(Modifier.weight(1f))
+            if (item == Tab.SETTINGS) Spacer(Modifier.height(8.dp))
             NavItem(item, item == selected, expanded) { onSelect(item) }
         }
     }

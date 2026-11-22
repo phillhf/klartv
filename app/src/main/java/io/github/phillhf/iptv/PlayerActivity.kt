@@ -66,6 +66,9 @@ class PlayerUi {
     var playing by mutableStateOf(false)
     var buffering by mutableStateOf(true)
     var controls by mutableStateOf(false)
+
+    /** Leiste wurde durch Spulen geöffnet: Fokus auf den Zeitbalken, damit Rechts/Links weiterspult. */
+    var seeking by mutableStateOf(false)
     var panel by mutableStateOf<PlayerPanel?>(null)
     var info by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
@@ -129,7 +132,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         if (uri != null) engine?.addSubtitle(uri, displayName(uri))
     }
 
-    private val hideControls = Runnable { if (ui.panel == null && ui.playing) ui.controls = false }
+    private val hideControls = Runnable { if (ui.panel == null && ui.playing) showControls(false) }
     private val hideInfo = Runnable { ui.info = false }
     private val hideMessage = Runnable { ui.message = null }
     private val enterDigits = Runnable {
@@ -403,6 +406,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
 
     override fun showControls(visible: Boolean) {
         ui.controls = visible
+        if (!visible) ui.seeking = false
         if (visible) {
             ui.info = false
             bump()
@@ -432,6 +436,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
 
     override fun touchSeek(forward: Boolean) {
         if (ui.duration > 0) {
+            ui.seeking = true
             seekBy(if (forward) 10_000 else -10_000)
             showControls(true)
         }

@@ -39,6 +39,7 @@ class TvTest : DeviceBase() {
 
     /** Was gerade den Fokus hat. */
     private fun focusedTexts(): String {
+        if (android.os.Build.VERSION.SDK_INT >= 34) ins.uiAutomation.clearCache()
         val n = ins.uiAutomation.rootInActiveWindow?.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT) ?: return ""
         val out = StringBuilder()
         fun walk(x: android.view.accessibility.AccessibilityNodeInfo) {
@@ -61,6 +62,7 @@ class TvTest : DeviceBase() {
         while (!focusedTexts().contains("Nord Eins") && steps++ < 14) {
             key(if (focusedTexts().contains("Alpha HD")) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_RIGHT)
         }
+        if (!focusedTexts().contains("Nord Eins")) shot("fehler_live")
         assertTrue("Fokus: ${focusedTexts()}", focusedTexts().contains("Nord Eins"))
         Thread.sleep(6000)
         shot("tv_live_vorschau")
@@ -107,14 +109,14 @@ class TvTest : DeviceBase() {
         expectPlaying(p, "ExoPlayer")
         val before = main { p.ui.position }
         key(KeyEvent.KEYCODE_DPAD_RIGHT, 3)
-        waitFor("vorgespult", 10, { state(p) }) { p.ui.position > before + 20_000 }
-        // Auf den Zeitbalken und dort in Schritten springen
-        waitFor("Leiste offen") { p.ui.controls }
-        key(KeyEvent.KEYCODE_DPAD_UP)
-        val at = main { p.ui.position }
-        key(KeyEvent.KEYCODE_DPAD_RIGHT, 2)
-        waitFor("Zeitbalken springt", 10, { state(p) + " Fokus: " + at }) { p.ui.position > at + 15_000 }
+        waitFor("dreimal vorgespult", 3, { state(p) }) { p.ui.position > before + 28_000 && p.ui.controls }
         shot("tv_zeitbalken")
+        key(KeyEvent.KEYCODE_DPAD_LEFT)
+        waitFor("zurückgespult", 3, { state(p) }) { p.ui.position < before + 28_000 }
+        key(KeyEvent.KEYCODE_DPAD_CENTER)
+        waitFor("OK hält an", 5, { state(p) }) { !p.ui.playing }
+        key(KeyEvent.KEYCODE_DPAD_CENTER)
+        waitFor("OK spielt weiter", 5, { state(p) }) { p.ui.playing }
         key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
         waitFor("Pause-Taste") { !p.ui.playing }
     }
@@ -131,6 +133,7 @@ class TvTest : DeviceBase() {
         while (!focusedTexts().contains("Sendung") && steps++ < 12) {
             key(if (focusedTexts().contains("Alpha HD") || steps > 8) KeyEvent.KEYCODE_DPAD_RIGHT else if (steps < 3) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_DOWN)
         }
+        if (!focusedTexts().contains("Sendung")) shot("fehler_programm")
         assertTrue("Fokus: ${focusedTexts()}", focusedTexts().contains("Sendung"))
         key(KeyEvent.KEYCODE_DPAD_RIGHT)
         shot("tv_programm")

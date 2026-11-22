@@ -193,6 +193,8 @@ private fun TileVideo(s: Stream, sound: Boolean) {
                 isFocusable = false
                 descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
                 keepScreenOn = true
+                // Android 14 zeigt Videoflächen in Compose sonst gelegentlich in falscher Größe
+                setEnableComposeSurfaceSyncWorkaround(true)
             }
         },
         update = { it.player = player },
