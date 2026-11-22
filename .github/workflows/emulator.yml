@@ -4,7 +4,7 @@ name: Emulator-Test
 on:
   push:
     branches: [main, funktionen]
-    paths: ['app/**', 'tools/demo_server.py', 'gradle/**', '.github/workflows/emulator.yml']
+    paths: ['app/src/androidTest/**', 'app/build.gradle.kts', 'tools/demo_server.py', 'gradle/**', '.github/workflows/emulator.yml']
   workflow_dispatch:
 
 permissions:
