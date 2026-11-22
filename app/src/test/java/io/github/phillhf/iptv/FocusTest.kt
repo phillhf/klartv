@@ -78,13 +78,11 @@ class FocusTest {
         }
     }
 
-    private fun press(vararg keys: Key) {
-        for (k in keys) {
-            compose.onRoot().performKeyInput { pressKey(k) }
-            compose.waitForIdle()
-            compose.mainClock.advanceTimeBy(300)
-            path += "$k -> ${focused()}"
-        }
+    private fun press(k: Key) {
+        compose.onRoot().performKeyInput { pressKey(k) }
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(300)
+        path += "$k -> ${focused()}"
     }
 
     /** Drückt [key], bis der Fokus auf [text] steht. */
