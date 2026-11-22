@@ -9,6 +9,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -77,7 +81,9 @@ import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.platform.BackHandler
+import io.github.phillhf.iptv.platform.ListScrollbar
 import io.github.phillhf.iptv.platform.appIcon
+import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.t
 
 enum class Tab(val label: String, val icon: ImageVector) {
@@ -137,7 +143,10 @@ fun HomeScreen(vm: AppViewModel) {
  */
 @Composable
 private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) {
-    var expanded by remember { mutableStateOf(false) }
+    var focusInside by remember { mutableStateOf(false) }
+    val mouse = remember { MutableInteractionSource() }
+    val hovered by mouse.collectIsHoveredAsState()
+    val expanded = if (mouseDriven) hovered else focusInside
     val width by animateDpAsState(if (expanded) 250.dp else NavCollapsed, label = "Seitenleiste")
     Column(
         modifier
@@ -150,7 +159,8 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
                     Brush.horizontalGradient(listOf(Klar.Bg, Klar.Bg.copy(alpha = 0.85f)))
                 },
             )
-            .onFocusChanged { expanded = it.hasFocus }
+            .onFocusChanged { focusInside = it.hasFocus }
+            .hoverable(mouse)
             // Handy quer: Die Leiste ist höher als der Bildschirm
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 18.dp),
@@ -281,25 +291,30 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
                         Spacer(Modifier.height(infoHeight))
                     }
                 }
-                LazyVerticalGrid(
-                    GridCells.Adaptive(112.dp),
-                    Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 28.dp, end = 32.dp, top = 8.dp, bottom = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
-                ) {
-                    items(list) { s ->
-                        PosterCard(
-                            title = s.name,
-                            image = s.logo,
-                            rating = s.rating,
-                            progress = vm.progress(s.key),
-                            onFocused = { vm.focus(s) },
-                        ) {
-                            vm.focus(s)
-                            vm.open(openScreen(kind, s))
+                val grid = rememberLazyGridState()
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    LazyVerticalGrid(
+                        GridCells.Adaptive(112.dp),
+                        Modifier.weight(1f).fillMaxHeight(),
+                        state = grid,
+                        contentPadding = PaddingValues(start = 28.dp, end = 32.dp, top = 8.dp, bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        items(list) { s ->
+                            PosterCard(
+                                title = s.name,
+                                image = s.logo,
+                                rating = s.rating,
+                                progress = vm.progress(s.key),
+                                onFocused = { vm.focus(s) },
+                            ) {
+                                vm.focus(s)
+                                vm.open(openScreen(kind, s))
+                            }
                         }
                     }
+                    ListScrollbar(grid)
                 }
             }
         }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,11 +20,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Replay
@@ -40,6 +44,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,7 +66,9 @@ import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.Stream
+import io.github.phillhf.iptv.platform.ListScrollbar
 import io.github.phillhf.iptv.platform.LocalAppContext
+import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.toPlayItem
 import io.github.phillhf.iptv.transfer.TransferState
@@ -72,6 +79,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private const val MINUTE = 60_000L
 
@@ -150,6 +158,14 @@ private fun Guide(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(t("Programm"), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            if (mouseDriven) {
+                val scope = rememberCoroutineScope()
+                val hour = with(density) { (MinuteWidth * 60f).toPx() }
+                LabelButton(Icons.Filled.FastRewind, t("1 Stunde")) { scope.launch { scroll.animateScrollBy(-hour) } }
+                Spacer(Modifier.width(8.dp))
+                LabelButton(Icons.Filled.FastForward, t("1 Stunde")) { scope.launch { scroll.animateScrollBy(hour) } }
+                Spacer(Modifier.width(24.dp))
+            }
             RoundButton(Icons.Filled.ChevronLeft, t("Tag zurück")) { if (day > -7) day-- }
             Text(dayLabel(day), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 6.dp))
             RoundButton(Icons.Filled.ChevronRight, t("Tag vor")) { if (day < 4) day++ }
@@ -170,14 +186,18 @@ private fun Guide(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
                 }
             }
         }
-        LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(start = 12.dp)) {
-            items(list) { s ->
-                GuideRow(
-                    vm, s, from, to, now, scroll, nameWidth,
-                    onChannel = { vm.openStream(context, s, list) },
-                    onOpen = { open = s to it },
-                )
+        val rows = rememberLazyListState()
+        Row(Modifier.weight(1f).fillMaxWidth().padding(start = 12.dp)) {
+            LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = rows) {
+                items(list) { s ->
+                    GuideRow(
+                        vm, s, from, to, now, scroll, nameWidth,
+                        onChannel = { vm.openStream(context, s, list) },
+                        onOpen = { open = s to it },
+                    )
+                }
             }
+            ListScrollbar(rows)
         }
     }
     open?.let { (s, e) ->

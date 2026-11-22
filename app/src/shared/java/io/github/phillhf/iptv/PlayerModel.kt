@@ -47,6 +47,7 @@ class PlayerUi {
     var canFullscreen by mutableStateOf(false)
     var fullscreen by mutableStateOf(false)
     var canCast by mutableStateOf(true)
+    var canExternal by mutableStateOf(true)
     var canSwitchEngine by mutableStateOf(true)
     val item: PlayItem? get() = items.getOrNull(index)
 }

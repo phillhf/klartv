@@ -66,6 +66,7 @@ import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.platform.appVersion
+import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.platform.openUrl
 import io.github.phillhf.iptv.t
 import java.text.DateFormat
@@ -131,12 +132,14 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         Section(t("Wiedergabe")) {
-            Text(t("Player-Engine"))
-            Options(
-                listOf(EngineChoice.AUTO to t("Automatisch"), EngineChoice.EXO to "ExoPlayer", EngineChoice.VLC to "VLC"),
-                AppSettings.engine,
-            ) { AppSettings.engine = it }
-            Dim(t("Automatisch wechselt zu VLC, wenn das Gerät ein Format oder den Ton nicht abspielen kann."))
+            if (!mouseDriven) {
+                Text(t("Player-Engine"))
+                Options(
+                    listOf(EngineChoice.AUTO to t("Automatisch"), EngineChoice.EXO to "ExoPlayer", EngineChoice.VLC to "VLC"),
+                    AppSettings.engine,
+                ) { AppSettings.engine = it }
+                Dim(t("Automatisch wechselt zu VLC, wenn das Gerät ein Format oder den Ton nicht abspielen kann."))
+            }
             Text(t("Format für Live-TV (nur Xtream)"))
             Options(listOf("ts" to "MPEG-TS", "m3u8" to "HLS"), vm.liveFormat) { vm.updateLiveFormat(it) }
             SwitchRow(t("Live-Vorschau"), t("Spielt den gewählten Sender in der Senderliste klein ab (TV und Tablet)."), vm.livePreview) { vm.updateLivePreview(it) }
@@ -182,7 +185,13 @@ fun SettingsScreen(vm: AppViewModel) {
                     Action(null, t("PIN ändern")) { vm.requirePin { newPin = true } }
                     Action(null, t("PIN entfernen")) { vm.requirePin { AppSettings.clearPin() } }
                 }
-                Dim(t("PIN vergessen? Dann hilft nur, die App-Daten in den Android-Einstellungen zu löschen."))
+                Dim(
+                    if (mouseDriven) {
+                        t("PIN vergessen? Dann hilft nur, den Ordner „Klar TV“ unter %LOCALAPPDATA% zu löschen.")
+                    } else {
+                        t("PIN vergessen? Dann hilft nur, die App-Daten in den Android-Einstellungen zu löschen.")
+                    },
+                )
             }
         }
 
@@ -200,7 +209,12 @@ fun SettingsScreen(vm: AppViewModel) {
                         "Zugangsdaten, Favoriten und Verlauf bleiben auf diesem Gerät. Keine Werbung, kein Tracking.",
                 ),
             )
-            Dim(t("Verwendet libVLC (LGPL 2.1), Media3 und Coil (Apache 2.0) und das Google Cast SDK. Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert."))
+            if (mouseDriven) {
+                Dim(t("Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, I kleines Fenster, Esc zurück."))
+                Dim(t("Verwendet libVLC (LGPL 2.1), Compose Multiplatform, Coil und SQLite JDBC (Apache 2.0). Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert."))
+            } else {
+                Dim(t("Verwendet libVLC (LGPL 2.1), Media3 und Coil (Apache 2.0) und das Google Cast SDK. Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert."))
+            }
             PrivacyLink()
         }
     }

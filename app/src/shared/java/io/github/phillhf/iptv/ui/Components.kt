@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -22,12 +26,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
@@ -37,9 +45,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,13 +57,18 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -71,7 +86,10 @@ import io.github.phillhf.iptv.data.Category
 import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.platform.isKeyRepeat
+import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.t
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 val Pill = RoundedCornerShape(50)
 val CardShape = RoundedCornerShape(12.dp)
@@ -131,7 +149,19 @@ fun FocusCard(
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
-    var focused by remember { mutableStateOf(false) }
+    var hasFocus by remember { mutableStateOf(false) }
+    val mouse = remember { MutableInteractionSource() }
+    val hovered by mouse.collectIsHoveredAsState()
+    val focused = hasFocus || hovered
+    // Mit der Maus zählt auch Zeigen: Infos zum Titel laden und oben anzeigen
+    if (mouseDriven) {
+        LaunchedEffect(hovered) {
+            if (hovered) {
+                delay(150)
+                onFocused?.invoke()
+            }
+        }
+    }
     val scale by animateFloatAsState(if (focused) 1.07f else 1f, label = "Kartengröße")
     Box(
         modifier
@@ -142,7 +172,7 @@ fun FocusCard(
             }
             .shadow(if (focused) 18.dp else 0.dp, shape, ambientColor = Klar.Accent, spotColor = Klar.Accent)
             .onFocusChanged {
-                focused = it.isFocused
+                hasFocus = it.isFocused
                 if (it.isFocused) onFocused?.invoke()
             }
             .clip(shape)
@@ -154,9 +184,28 @@ fun FocusCard(
                 if (menu && it.type == KeyEventType.KeyUp) onLongClick()
                 menu
             }
+            .hoverable(mouse)
+            .rightClick(onLongClick)
             .combinedClickable(onLongClick = onLongClick, onClick = onClick),
     ) {
         content(focused)
+    }
+}
+
+/** Rechtsklick mit der Maus. */
+fun Modifier.rightClick(action: (() -> Unit)?): Modifier = if (action == null) {
+    this
+} else {
+    pointerInput(action) {
+        awaitPointerEventScope {
+            while (true) {
+                val e = awaitPointerEvent()
+                if (e.type == PointerEventType.Press && e.buttons.isSecondaryPressed) {
+                    e.changes.forEach { it.consume() }
+                    action()
+                }
+            }
+        }
     }
 }
 
@@ -319,12 +368,39 @@ fun Shelf(
 ) {
     Column(modifier) {
         Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = side, bottom = 4.dp))
-        LazyRow(
-            contentPadding = PaddingValues(start = side, end = side, top = 12.dp, bottom = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            content = content,
-        )
+        val state = rememberLazyListState()
+        Box {
+            LazyRow(
+                state = state,
+                contentPadding = PaddingValues(start = side, end = side, top = 12.dp, bottom = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                content = content,
+            )
+            if (mouseDriven) ShelfArrows(state, Modifier.matchParentSize())
+        }
     }
+}
+
+/** Pfeile zum Blättern mit der Maus; das Mausrad rollt die Seite. */
+@Composable
+private fun ShelfArrows(state: LazyListState, modifier: Modifier) {
+    val scope = rememberCoroutineScope()
+    fun scroll(direction: Int) {
+        scope.launch { state.animateScrollBy(state.layoutInfo.viewportSize.width * 0.8f * direction) }
+    }
+    Row(modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (state.canScrollBackward) ArrowButton(Icons.Filled.ChevronLeft, t("Zurückblättern")) { scroll(-1) }
+        Spacer(Modifier.weight(1f))
+        if (state.canScrollForward) ArrowButton(Icons.Filled.ChevronRight, t("Weiterblättern")) { scroll(1) }
+    }
+}
+
+@Composable
+private fun ArrowButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.6f)).focusProperties { canFocus = false }.clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, contentDescription = label, tint = Color.White) }
 }
 
 /**

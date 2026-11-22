@@ -6,7 +6,10 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +58,13 @@ fun appIcon(): Painter = painterResource(R.drawable.ic_launcher_foreground)
 
 @Composable
 fun BackHandler(enabled: Boolean = true, onBack: () -> Unit) = androidx.activity.compose.BackHandler(enabled, onBack)
+
+/** Scrollbalken nur für die Maus. */
+@Composable
+fun ListScrollbar(state: LazyListState, modifier: Modifier = Modifier) = Unit
+
+@Composable
+fun ListScrollbar(state: LazyGridState, modifier: Modifier = Modifier) = Unit
 
 @Composable
 fun ServerPermission(server: String?) = LocalNetworkPermission(server)

@@ -18,8 +18,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.KlarTheme
-import java.net.InetAddress
-import java.net.URI
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,12 +43,4 @@ internal fun LocalNetworkPermission(server: String?) {
         val missing = ContextCompat.checkSelfPermission(context, LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
         if (missing && isLocalHost(server)) runCatching { launcher.launch(LOCAL_NETWORK) }
     }
-}
-
-/** Nur nach der Schreibweise, ohne Namensauflösung. */
-fun isLocalHost(address: String): Boolean {
-    val host = runCatching { URI(address.trim()).host }.getOrNull()?.lowercase() ?: return false
-    if (host.endsWith(".local") || host.endsWith(".lan") || host.endsWith(".fritz.box") || !host.contains('.')) return true
-    if (!Regex("[0-9.]+").matches(host)) return false
-    return runCatching { InetAddress.getByName(host).let { it.isSiteLocalAddress || it.isLinkLocalAddress } }.getOrDefault(false)
 }

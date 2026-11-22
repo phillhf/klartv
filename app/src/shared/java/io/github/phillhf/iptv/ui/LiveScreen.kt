@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,7 +47,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.phillhf.iptv.AppViewModel
 import io.github.phillhf.iptv.Screen
+import io.github.phillhf.iptv.platform.ListScrollbar
 import io.github.phillhf.iptv.platform.LocalAppContext
+import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Category
@@ -93,6 +96,7 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
     }
     val categories = liveCategories(vm, catalog)
     var selected by remember(current) { mutableStateOf(list.firstOrNull()) }
+    var clicked by remember(current) { mutableStateOf(list.firstOrNull()?.key) }
     val preview = rememberLivePreview()
     val play = { i: Int ->
         preview.stop()
@@ -114,7 +118,8 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
                     }
                 },
             ) { vm.chooseCategory(Kind.LIVE, it) }
-            LazyColumn(Modifier.weight(1.1f).fillMaxHeight(), contentPadding = PaddingValues(vertical = 16.dp)) {
+            val rows = rememberLazyListState()
+            LazyColumn(Modifier.weight(1.1f).fillMaxHeight(), state = rows, contentPadding = PaddingValues(vertical = 16.dp)) {
                 itemsIndexed(list) { i, s ->
                     LaunchedEffect(s.id) { vm.requestEpg(s) }
                     ChannelRow(
@@ -123,10 +128,13 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
                         number = i + 1,
                         selected = s.key == selected?.key,
                         onFocused = { selected = s },
-                        onClick = { play(i) },
+                        onClick = {
+                            if (mouseDriven && vm.livePreview && clicked != s.key) clicked = s.key else play(i)
+                        },
                     )
                 }
             }
+            ListScrollbar(rows)
             Box(Modifier.weight(1f).fillMaxHeight().padding(top = 24.dp, end = 32.dp, start = 12.dp)) {
                 selected?.let { PreviewPane(vm, it, preview) }
             }
@@ -233,7 +241,7 @@ private fun PreviewPane(vm: AppViewModel, stream: Stream, preview: LivePreview) 
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(t("OK: Vollbild  ·  Im Vollbild ▲ ▼: Sender wechseln"), style = MaterialTheme.typography.labelMedium, color = Klar.TextDim)
+        Text(if (mouseDriven) t("Noch einmal klicken: groß ansehen") else t("OK: Vollbild  ·  Im Vollbild ▲ ▼: Sender wechseln"), style = MaterialTheme.typography.labelMedium, color = Klar.TextDim)
     }
 }
 

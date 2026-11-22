@@ -285,5 +285,18 @@
  "Datenschutzerklärung": "Gizlilik politikası",
  "Lange drücken für mehr Möglichkeiten": "Diğer seçenekler için uzun basın",
  "Aus „Weiterschauen“ entfernen": "“İzlemeye devam et” listesinden kaldır",
- "Die Datei enthält keinen Programmführer.": "Dosya bir yayın akışı içermiyor."
+ "Die Datei enthält keinen Programmführer.": "Dosya bir yayın akışı içermiyor.",
+ "Lautstärke": "Ses düzeyi",
+ "Lautstärke %1 %": "Ses düzeyi %1 %",
+ "Vollbild": "Tam ekran",
+ "PIN vergessen? Dann hilft nur, den Ordner „Klar TV“ unter %LOCALAPPDATA% zu löschen.": "PIN’i mi unuttunuz? O zaman %LOCALAPPDATA% içindeki “Klar TV” klasörünü silmek gerekir.",
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, I kleines Fenster, Esc zurück.": "Oynatıcı tuşları: boşluk duraklat, F tam ekran, M sessiz, oklar sarma ve ses, Page Up/Down kanal, I küçük pencere, Esc geri.",
+ "Verwendet libVLC (LGPL 2.1), Compose Multiplatform, Coil und SQLite JDBC (Apache 2.0). Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert.": "libVLC (LGPL 2.1), Compose Multiplatform, Coil ve SQLite JDBC (Apache 2.0) kullanır. Film verileri kendi anahtarınızla TMDB’den gelir; uygulama TMDB tarafından onaylanmamış veya sertifikalandırılmamıştır.",
+ "Zurückblättern": "Önceki sayfa",
+ "Weiterblättern": "Sonraki sayfa",
+ "Noch einmal klicken: groß ansehen": "Tekrar tıkla: büyük izle",
+ "1 Stunde": "1 saat",
+ "Klar TV schließen?": "Klar TV kapatılsın mı?",
+ "Es läuft noch ein Download oder eine Aufnahme. Beim Schließen wird das beendet.": "Bir indirme veya kayıt sürüyor. Kapatınca durdurulur.",
+ "Trotzdem schließen": "Yine de kapat"
 }

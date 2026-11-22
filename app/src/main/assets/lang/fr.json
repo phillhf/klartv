@@ -285,5 +285,18 @@
  "Datenschutzerklärung": "Politique de confidentialité",
  "Lange drücken für mehr Möglichkeiten": "Appui long pour plus d’options",
  "Aus „Weiterschauen“ entfernen": "Retirer de « Continuer à regarder »",
- "Die Datei enthält keinen Programmführer.": "Le fichier ne contient pas de guide TV."
+ "Die Datei enthält keinen Programmführer.": "Le fichier ne contient pas de guide TV.",
+ "Lautstärke": "Volume",
+ "Lautstärke %1 %": "Volume %1 %",
+ "Vollbild": "Plein écran",
+ "PIN vergessen? Dann hilft nur, den Ordner „Klar TV“ unter %LOCALAPPDATA% zu löschen.": "Code PIN oublié ? Il faut alors supprimer le dossier « Klar TV » dans %LOCALAPPDATA%.",
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, I kleines Fenster, Esc zurück.": "Touches du lecteur : espace pause, F plein écran, M muet, flèches avance et volume, page haut/bas chaîne, I petite fenêtre, Échap retour.",
+ "Verwendet libVLC (LGPL 2.1), Compose Multiplatform, Coil und SQLite JDBC (Apache 2.0). Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert.": "Utilise libVLC (LGPL 2.1), Compose Multiplatform, Coil et SQLite JDBC (Apache 2.0). Données de films de TMDB avec votre propre clé ; l’application n’est ni approuvée ni certifiée par TMDB.",
+ "Zurückblättern": "Page précédente",
+ "Weiterblättern": "Page suivante",
+ "Noch einmal klicken: groß ansehen": "Cliquer encore : afficher en grand",
+ "1 Stunde": "1 heure",
+ "Klar TV schließen?": "Fermer Klar TV ?",
+ "Es läuft noch ein Download oder eine Aufnahme. Beim Schließen wird das beendet.": "Un téléchargement ou un enregistrement est en cours. La fermeture l’arrêtera.",
+ "Trotzdem schließen": "Fermer quand même"
 }

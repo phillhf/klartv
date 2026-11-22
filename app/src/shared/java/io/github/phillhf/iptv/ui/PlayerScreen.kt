@@ -31,6 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Cast
@@ -38,6 +40,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material.icons.filled.Pause
@@ -88,6 +92,7 @@ import io.github.phillhf.iptv.cast.Caster
 import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.EngineChoice
 import io.github.phillhf.iptv.platform.LocalAppContext
+import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.player.ScaleMode
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.transfer.Transfers
@@ -99,8 +104,14 @@ fun PlayerScreen(ui: PlayerUi, actions: PlayerActions) {
         Box(
             Modifier.fillMaxSize().pointerInput(Unit) {
                 detectTapGestures(
-                    onTap = { if (ui.panel != null) actions.openPanel(null) else actions.showControls(!ui.controls) },
-                    onDoubleTap = { actions.touchSeek(it.x > size.width / 2) },
+                    onTap = {
+                        when {
+                            ui.panel != null -> actions.openPanel(null)
+                            mouseDriven -> actions.togglePlay()
+                            else -> actions.showControls(!ui.controls)
+                        }
+                    },
+                    onDoubleTap = { if (mouseDriven) actions.fullscreen() else actions.touchSeek(it.x > size.width / 2) },
                 )
             },
         ) {
@@ -136,8 +147,8 @@ private fun Controls(ui: PlayerUi, actions: PlayerActions) {
                 (now?.title ?: item.subtitle)?.let { Text(it, color = Color.White.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             if (ui.canPip) RoundButton(Icons.Filled.PictureInPictureAlt, t("Bild im Bild")) { actions.pip() }
-            if (!item.local) RoundButton(Icons.Filled.Cast, t("Übertragen")) { actions.openPanel(PlayerPanel.CAST) }
-            RoundButton(Icons.AutoMirrored.Filled.OpenInNew, t("Anderer Player")) { actions.external() }
+            if (!item.local && ui.canCast) RoundButton(Icons.Filled.Cast, t("Übertragen")) { actions.openPanel(PlayerPanel.CAST) }
+            if (ui.canExternal) RoundButton(Icons.AutoMirrored.Filled.OpenInNew, t("Anderer Player")) { actions.external() }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp)) {
             if (ui.duration > 0) {
@@ -182,8 +193,26 @@ private fun Controls(ui: PlayerUi, actions: PlayerActions) {
                 item { LabelButton(Icons.Filled.Subtitles, t("Untertitel")) { actions.openPanel(PlayerPanel.SUBTITLES) } }
                 if (!item.live) item { LabelButton(Icons.Filled.Speed, "${ui.speed}×") { actions.openPanel(PlayerPanel.SPEED) } }
                 item { LabelButton(Icons.Filled.AspectRatio, t("Bildformat")) { actions.openPanel(PlayerPanel.SCALE) } }
-                item { LabelButton(Icons.Filled.Memory, ui.engineName.ifEmpty { "Player" }) { actions.openPanel(PlayerPanel.ENGINE) } }
+                if (ui.canSwitchEngine) item { LabelButton(Icons.Filled.Memory, ui.engineName.ifEmpty { "Player" }) { actions.openPanel(PlayerPanel.ENGINE) } }
                 item { LabelButton(Icons.Filled.Nightlight, t("Schlaf-Timer")) { actions.openPanel(PlayerPanel.SLEEP) } }
+                ui.volume?.let { v ->
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RoundButton(if (v > 0f) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff, t("Lautstärke")) {
+                                actions.volume(if (v > 0f) 0f else 1f)
+                            }
+                            Slider(
+                                value = v,
+                                onValueChange = { actions.volume(it) },
+                                colors = SliderDefaults.colors(thumbColor = Klar.Accent, activeTrackColor = Klar.Accent, inactiveTrackColor = Color.White.copy(alpha = 0.25f)),
+                                modifier = Modifier.width(120.dp),
+                            )
+                        }
+                    }
+                }
+                if (ui.canFullscreen) {
+                    item { RoundButton(if (ui.fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen, t("Vollbild")) { actions.fullscreen() } }
+                }
             }
         }
     }
