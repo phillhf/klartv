@@ -3,7 +3,7 @@ name: Emulator-Test
 # Spielt im Android-Emulator wirklich ab, nimmt auf und lädt herunter, gegen einen nachgebauten Anbieter.
 on:
   push:
-    branches: [main]
+    branches: [main, funktionen]
     paths: ['app/**', 'tools/demo_server.py', 'gradle/**', '.github/workflows/emulator.yml']
   workflow_dispatch:
 
