@@ -184,15 +184,15 @@ object Xmltv {
                 if (c < 0) return
                 val ch = c.toChar()
                 when {
+                    // Die Marke oder ihr Text in Anführungszeichen wurde nie geschlossen: Hier beginnt schon die nächste
+                    ch == '<' -> {
+                        at--
+                        return
+                    }
                     quote != 0.toChar() -> if (ch == quote) quote = 0.toChar()
                     ch == '>' -> {
                         closed = true
                         break
-                    }
-                    // Die Marke wurde nie geschlossen: Hier beginnt schon die nächste
-                    ch == '<' -> {
-                        at--
-                        return
                     }
                     (ch == '"' || ch == '\'') && !end -> quote = ch
                 }

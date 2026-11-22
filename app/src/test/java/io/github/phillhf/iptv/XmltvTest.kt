@@ -67,7 +67,7 @@ class XmltvTest {
     @Test
     fun brokenTagsAndCutOff() {
         read("<tv><programme start=\"2026112210" + show("a", "Eins") + "<programme start=\"20261122100000\" channel=\"b\"><title>Ohne Ende" + show("c", "Zwei") + show("d", "Drei").dropLast(20))
-        assertEquals(listOf("Zwei"), titles.filter { it == "Zwei" })
+        assertEquals(listOf("Eins", "Zwei"), titles)
     }
 
     @Test

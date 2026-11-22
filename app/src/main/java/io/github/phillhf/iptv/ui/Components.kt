@@ -154,7 +154,7 @@ fun FocusCard(
             .onKeyEvent {
                 // Manche Fernbedienungen haben eine Menütaste
                 val menu = onLongClick != null && it.key == Key.Menu
-                if (menu && it.type == KeyEventType.KeyUp) onLongClick?.invoke()
+                if (menu && it.type == KeyEventType.KeyUp) onLongClick()
                 menu
             }
             .combinedClickable(onLongClick = onLongClick, onClick = onClick),
