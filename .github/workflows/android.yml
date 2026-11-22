@@ -48,4 +48,4 @@ jobs:
           if-no-files-found: ignore
 
       - name: Debug-APK bauen
-        run: ./gradlew assembleMobileDebug assembleCarDebug
+        run: ./gradlew assembleMobileDebug assembleCarDebug --stacktrace
