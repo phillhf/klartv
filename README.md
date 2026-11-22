@@ -37,6 +37,17 @@ Store-Grafiken neu erzeugen: `java -Djava.awt.headless=true tools/Grafiken.java 
 
 Datenschutz: [docs/DATENSCHUTZ.md](docs/DATENSCHUTZ.md)
 
+## Echtheit prüfen
+
+Releases sind mit einem eigenen, geheimen Schlüssel signiert. Fingerabdruck des Zertifikats (SHA-256):
+
+```
+1E:B4:18:8E:33:16:9B:21:7C:63:63:F2:46:87:46:67:23:15:D4:DF:9B:8E:59:06:66:AE:9B:00:27:E3:C3:FD
+```
+
+Der Schlüssel `app/debug.keystore` ist absichtlich öffentlich und nur für Testfassungen mit eigener Paket-ID
+(`.debug`).
+
 ## Lizenz
 
 [PolyForm Noncommercial 1.0.0](LICENSE.md): privat frei nutzbar, kommerziell nur mit Genehmigung.
