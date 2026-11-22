@@ -20,6 +20,7 @@ import org.junit.runners.MethodSorters
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class TvTest : DeviceBase() {
     private fun key(code: Int, times: Int = 1) = repeat(times) {
+        dismissSystemDialogs()
         ins.sendKeyDownUpSync(code)
         Thread.sleep(350)
     }

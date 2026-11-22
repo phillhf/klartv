@@ -93,6 +93,7 @@ abstract class DeviceBase {
     }
 
     protected fun shot(name: String) {
+        dismissSystemDialogs()
         Thread.sleep(800)
         val bmp = ins.uiAutomation.takeScreenshot() ?: return
         File(shots, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
@@ -118,6 +119,7 @@ abstract class DeviceBase {
         val end = System.currentTimeMillis() + 12_000
         var seen = emptyList<String>()
         while (System.currentTimeMillis() < end) {
+            dismissSystemDialogs()
             seen = onScreen()
             if (texts.all { t -> seen.any { it.contains(t) } }) return
             Thread.sleep(300)
@@ -147,6 +149,19 @@ abstract class DeviceBase {
     protected val movie = PlayItem("MOVIE:200", "Sternenstaub", "$server/movie/demo/demo/200.mp4", live = false)
     protected val dolby = PlayItem("MOVIE:201", "Dolby Nacht", "$server/movie/demo/demo/201.mkv", live = false)
 
+    /** Schließt Dialoge des Systems („App reagiert nicht“), die sonst Tasten und Fotos abfangen. */
+    protected fun dismissSystemDialogs() {
+        repeat(3) {
+            if (Build.VERSION.SDK_INT >= 34) ins.uiAutomation.clearCache()
+            val root = ins.uiAutomation.rootInActiveWindow ?: return
+            val wait = root.findAccessibilityNodeInfosByViewId("android:id/aerr_wait").firstOrNull()
+                ?: root.findAccessibilityNodeInfosByViewId("android:id/aerr_close").firstOrNull()
+                ?: return
+            wait.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            Thread.sleep(1000)
+        }
+    }
+
     /** Tippt auf das erste Element mit diesem Text, wie ein Finger. */
     protected fun clickOn(text: String, index: Int = 0) {
         val hits = ArrayList<AccessibilityNodeInfo>()
@@ -158,6 +173,7 @@ abstract class DeviceBase {
         val end = System.currentTimeMillis() + 10_000
         while (hits.size <= index && System.currentTimeMillis() < end) {
             hits.clear()
+            dismissSystemDialogs()
             walk(ins.uiAutomation.rootInActiveWindow)
             if (hits.size <= index) Thread.sleep(300)
         }

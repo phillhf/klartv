@@ -12,6 +12,10 @@ adb shell settings put secure immersive_mode_confirmations confirmed
 adb shell settings put global hide_error_dialogs 1
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
+# Nach dem Start hat der Emulator viel zu tun; hängt sich dabei der Startbildschirm auf, verdeckt sein Dialog alles
+sleep 45
+adb shell am force-stop com.google.android.apps.nexuslauncher
+sleep 10
 adb logcat -c
 # Durchgang im Fernsehformat, nur mit Fernbedienungstasten
 adb shell wm size 1920x1080
