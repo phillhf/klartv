@@ -167,7 +167,8 @@ class TvTest : DeviceBase() {
         // Der Fokus steht auf dem übrigen Film: OK spielt ihn ab
         key(KeyEvent.KEYCODE_DPAD_CENTER)
         waitFor("OK spielt den nächsten") { player0() != null }
-        assertEquals("Sternenstaub", main { player()!!.ui.item?.title })
+        val p = player()!!
+        assertEquals("Sternenstaub", main { p.ui.item?.title })
         lib.removeContinue("MOVIE:200")
     }
 }
