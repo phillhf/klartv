@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  # Schreiben nur, um AAB und APK als Entwurfs-Release abzulegen
+  # Schreiben nur, um AAB und APK im Release abzulegen
   contents: write
 
 jobs:
@@ -51,9 +51,9 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/upload.jks"
 
-      # Ablage als Entwurfs-Release statt als Artefakt; Entwürfe sehen nur Mitwirkende des Repos.
-      # Es gibt immer nur einen Entwurf „neuester-build“, der vorige wird ersetzt.
-      - name: Als Entwurfs-Release ablegen
+      # Veröffentlicht unter dem Tag v<Version>. Gibt es die Version schon, bricht der Lauf ab:
+      # erst versionName in app/build.gradle.kts erhöhen.
+      - name: Release veröffentlichen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -63,9 +63,4 @@ jobs:
           for abi in arm64-v8a armeabi-v7a x86_64; do
             cp "app/build/outputs/apk/mobile/release/app-mobile-$abi-release.apk" "KlarTV-$VERSION-$abi.apk"
           done
-          gh release delete neuester-build --yes --cleanup-tag || true
-          gh release create neuester-build --draft --target "$GITHUB_SHA" \
-            --title "Klar TV $VERSION (Build ${{ github.run_number }})" \
-            --notes "Automatisch gebaut aus $GITHUB_SHA. Nur zum Herunterladen." \
-            KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk \
-            app/build/outputs/mapping/mobileRelease/mapping.txt
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk

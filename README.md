@@ -28,8 +28,8 @@ Gebaut wird mit GitHub Actions:
 - **Android Build:** Übersetzungen, Unit-Tests, Screenshots der Oberfläche und Debug-APKs
 - **Emulator-Test:** spielt im Android-Emulator wirklich ab, nimmt auf und lädt herunter, gegen den
   nachgebauten Anbieter `tools/demo_server.py`
-- **Release** (von Hand): App-Bundles für Play Store und Auto sowie je eine APK pro Prozessor, abgelegt als
-  Entwurfs-Release `neuester-build`
+- **Release** (von Hand): App-Bundles für Play Store und Auto sowie je eine APK pro Prozessor, veröffentlicht als
+  GitHub-Release `v<Version>`
 
 Neue Texte laufen durch `t("…")`; `python tools/texte.py` zeigt, welche Übersetzungen fehlen.
 
