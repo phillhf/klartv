@@ -330,7 +330,7 @@ private fun TextSetting(label: String, value: String, secret: Boolean = false, o
             visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onSave(text) }),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).leaveWithArrows(),
         )
         if (text != value) {
             TextButton(onClick = { onSave(text) }, modifier = Modifier.padding(start = 8.dp).focusRing(Pill)) { Text(t("Speichern")) }
@@ -362,7 +362,7 @@ fun PinDialog(title: String, hint: String?, onDismiss: () -> Unit, onConfirm: (S
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { confirm() }),
-                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus).leaveWithArrows(),
                 )
                 (error ?: hint)?.let { Text(it, color = if (error != null) MaterialTheme.colorScheme.error else Klar.TextDim) }
             }

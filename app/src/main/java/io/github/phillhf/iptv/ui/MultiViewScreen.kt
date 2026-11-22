@@ -217,7 +217,7 @@ private fun ChannelPicker(vm: AppViewModel, canRemove: Boolean, onPick: (Stream)
         title = { Text(t("Sender wählen")) },
         text = {
             Column {
-                OutlinedTextField(query, { query = it }, label = { Text(t("Suche")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(query, { query = it }, label = { Text(t("Suche")) }, singleLine = true, modifier = Modifier.fillMaxWidth().leaveWithArrows())
                 LazyColumn(Modifier.height(260.dp).padding(top = 8.dp)) {
                     items(list) { s ->
                         val shape = RoundedCornerShape(8.dp)

@@ -109,7 +109,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 label = { Text(t("Name (frei wählbar)")) },
                 singleLine = true,
                 keyboardOptions = next,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().leaveWithArrows(),
             )
             if (type == SourceType.XTREAM) {
                 OutlinedTextField(
@@ -118,7 +118,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                     label = { Text(t("Server, z. B. http://anbieter.example:8080")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().leaveWithArrows(),
                 )
                 OutlinedTextField(
                     value = user,
@@ -126,7 +126,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                     label = { Text(t("Benutzername")) },
                     singleLine = true,
                     keyboardOptions = next,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().leaveWithArrows(),
                 )
                 OutlinedTextField(
                     value = pass,
@@ -143,7 +143,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                             )
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().leaveWithArrows(),
                 )
             } else {
                 OutlinedTextField(
@@ -152,7 +152,7 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                     label = { Text(t("Playlist-Adresse (M3U-URL)")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().leaveWithArrows(),
                 )
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

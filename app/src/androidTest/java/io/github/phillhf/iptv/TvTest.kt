@@ -23,6 +23,7 @@ class TvTest : DeviceBase() {
         dismissSystemDialogs()
         ins.sendKeyDownUpSync(code)
         Thread.sleep(350)
+        android.util.Log.i("TVTEST", "${KeyEvent.keyCodeToString(code)} -> ${focusedTexts()}")
     }
 
     private fun openApp(): AppViewModel {

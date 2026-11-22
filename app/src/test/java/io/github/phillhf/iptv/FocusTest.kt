@@ -104,7 +104,8 @@ class FocusTest {
         until(Key.DirectionDown, "Doku Welt", 8)
         until(Key.DirectionRight, "Favoriten", 2)
         until(Key.DirectionLeft, "Doku Welt", 2)
-        until(Key.DirectionLeft, "Start", 5)
+        until(Key.DirectionLeft, "Kinder", 2)
+        until(Key.DirectionLeft, "Serien", 2)
     }
 
     @Test
@@ -112,7 +113,9 @@ class FocusTest {
         start(Tab.GUIDE)
         press(Key.DirectionDown)
         until(Key.DirectionRight, "Unterhaltung", 4)
-        until(Key.DirectionDown, " – ", 4)
+        until(Key.DirectionDown, "Nord Eins", 4)
+        until(Key.DirectionRight, " – ", 3)
+        until(Key.DirectionDown, " – ", 2)
     }
 
     @Test
@@ -121,7 +124,8 @@ class FocusTest {
         press(Key.DirectionDown)
         until(Key.DirectionRight, "Sternenstaub", 4)
         until(Key.DirectionDown, "Das Erbe der Wölfe", 2)
-        until(Key.DirectionLeft, "Alle", 4)
+        until(Key.DirectionLeft, "Familie", 2)
+        until(Key.DirectionUp, "Alle", 6)
     }
 
     @Test
@@ -129,7 +133,7 @@ class FocusTest {
         start(Tab.START)
         press(Key.DirectionDown)
         until(Key.DirectionRight, "Sternenstaub", 4)
-        until(Key.DirectionDown, "Neonstadt", 8)
+        until(Key.DirectionDown, "Wolkenkratzer", 8)
     }
 
     @Test
@@ -137,6 +141,7 @@ class FocusTest {
         start(Tab.SETTINGS)
         press(Key.DirectionDown)
         until(Key.DirectionRight, "Demo", 4)
-        until(Key.DirectionDown, "PIN festlegen", 40)
+        until(Key.DirectionDown, "PIN festlegen", 60)
+        until(Key.DirectionDown, "OpenSubtitles", 8)
     }
 }

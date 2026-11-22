@@ -449,7 +449,7 @@ private fun SearchScreen(vm: AppViewModel, wide: Boolean) {
                     focusedContainerColor = Klar.Surface,
                     unfocusedContainerColor = Klar.Surface,
                 ),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = side).widthIn(max = 720.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = side).widthIn(max = 720.dp).leaveWithArrows(),
             )
         }
         if (Kind.entries.any { vm.catalog(it) is Load.Loading }) {

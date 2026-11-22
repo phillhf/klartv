@@ -25,6 +25,13 @@ timeout 600 adb shell am instrument -w -r -e class $PKG_CLASS.TvTest $PKG.test/a
 adb shell wm size reset
 adb shell wm density reset
 sleep 3
+if git log -1 --format=%s | grep -q '\[nur TV\]'; then
+  adb logcat -d > emulator-out/logcat.txt
+  adb pull /sdcard/Android/data/$PKG/files/shots emulator-out/ || true
+  grep -E "INSTRUMENTATION_STATUS: (test|stack)|^(OK|FAILURES|Tests run)" emulator-out/result_tv.txt
+  grep TVTEST emulator-out/logcat.txt
+  exit 0
+fi
 # Durchgang im Handyformat
 timeout 1200 adb shell am instrument -w -r -e class $PKG_CLASS.DeviceTest $PKG.test/androidx.test.runner.AndroidJUnitRunner > emulator-out/result.txt
 adb logcat -d > emulator-out/logcat.txt

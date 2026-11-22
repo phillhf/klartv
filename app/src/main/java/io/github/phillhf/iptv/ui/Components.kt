@@ -47,7 +47,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -83,6 +90,21 @@ fun Modifier.focusRing(shape: Shape = RoundedCornerShape(10.dp)): Modifier {
         .onFocusChanged { focused = it.isFocused }
         .border(2.dp, ring, shape)
         .background(fill, shape)
+}
+
+/** Textfelder behalten Hoch/Runter sonst für sich; mit der Fernbedienung käme man nicht mehr heraus. */
+@Composable
+fun Modifier.leaveWithArrows(): Modifier {
+    val manager = LocalFocusManager.current
+    return onPreviewKeyEvent {
+        val direction = when (it.key) {
+            Key.DirectionDown -> FocusDirection.Down
+            Key.DirectionUp -> FocusDirection.Up
+            else -> return@onPreviewKeyEvent false
+        }
+        if (it.type == KeyEventType.KeyDown) manager.moveFocus(direction)
+        true
+    }
 }
 
 /**
