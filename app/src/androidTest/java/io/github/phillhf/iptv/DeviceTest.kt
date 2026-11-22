@@ -38,121 +38,7 @@ import java.io.File
 /** Läuft im Emulator gegen tools/demo_server.py auf dem Rechner (10.0.2.2) und spielt wirklich ab. */
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-class DeviceTest {
-    private val ins = InstrumentationRegistry.getInstrumentation()
-    private val app: Context = ins.targetContext.applicationContext
-    private val server = "http://10.0.2.2:8080"
-    private val account = Account("test", "Testanbieter", SourceType.XTREAM, server, "demo", "demo")
-    private val shots = File(app.getExternalFilesDir(null), "shots").apply { mkdirs() }
-
-    @Before
-    fun prepare() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            ins.uiAutomation.grantRuntimePermission(app.packageName, "android.permission.POST_NOTIFICATIONS")
-        }
-        ins.runOnMainSync {
-            AppSettings.engine = EngineChoice.AUTO
-            AppSettings.subtitlesOn = false
-            AppSettings.language = "de"
-            AppSettings.clearPin()
-            I18n.init(app)
-            Transfers.list.toList().forEach { Transfers.remove(it) }
-        }
-        AccountStore(app).apply {
-            save(listOf(account))
-            activeId = account.id
-        }
-    }
-
-    @After
-    fun closeAll() {
-        val open = activities()
-        ins.runOnMainSync { open.forEach { it.finish() } }
-        Thread.sleep(1500)
-    }
-
-    // ---------- Hilfen ----------
-
-    private fun activities(): List<Activity> {
-        val out = ArrayList<Activity>()
-        ins.runOnMainSync {
-            Stage.entries.filter { it != Stage.DESTROYED }.forEach { s ->
-                out += ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(s)
-            }
-        }
-        return out.distinct()
-    }
-
-    private fun <T> main(block: () -> T): T {
-        var result: T? = null
-        ins.runOnMainSync { result = block() }
-        @Suppress("UNCHECKED_CAST")
-        return result as T
-    }
-
-    private fun waitFor(what: String, seconds: Int = 40, describe: () -> String = { "" }, condition: () -> Boolean) {
-        val end = System.currentTimeMillis() + seconds * 1000L
-        while (System.currentTimeMillis() < end) {
-            if (main(condition)) return
-            Thread.sleep(250)
-        }
-        throw AssertionError("Nicht eingetreten: $what ${main(describe)}")
-    }
-
-    private fun shot(name: String) {
-        Thread.sleep(800)
-        val bmp = ins.uiAutomation.takeScreenshot() ?: return
-        File(shots, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
-    }
-
-    /** Alle Texte, die gerade wirklich auf dem Bildschirm stehen (Text und Beschreibung von Knöpfen). */
-    private fun onScreen(): List<String> {
-        val out = ArrayList<String>()
-        fun walk(n: AccessibilityNodeInfo?) {
-            n ?: return
-            if (n.isVisibleToUser) {
-                n.text?.let { out += it.toString() }
-                n.contentDescription?.let { out += it.toString() }
-            }
-            for (i in 0 until n.childCount) walk(n.getChild(i))
-        }
-        walk(ins.uiAutomation.rootInActiveWindow)
-        return out
-    }
-
-    private fun expectOnScreen(vararg texts: String) {
-        val end = System.currentTimeMillis() + 12_000
-        var seen = emptyList<String>()
-        while (System.currentTimeMillis() < end) {
-            seen = onScreen()
-            if (texts.all { t -> seen.any { it.contains(t) } }) return
-            Thread.sleep(300)
-        }
-        throw AssertionError("Nicht sichtbar: ${texts.filter { t -> seen.none { it.contains(t) } }}, sichtbar: $seen")
-    }
-
-    private fun play(vararg items: PlayItem, index: Int = 0): PlayerActivity {
-        PlaybackQueue.items = items.toList()
-        PlaybackQueue.startIndex = index
-        PlaybackQueue.library = Library(app, "test")
-        PlaybackQueue.epg = null
-        PlaybackQueue.onPlay = null
-        PlaybackQueue.catchup = null
-        app.startActivity(Intent(app, PlayerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        waitFor("Player offen") { ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).any { it is PlayerActivity } }
-        return activities().filterIsInstance<PlayerActivity>().first()
-    }
-
-    private fun state(p: PlayerActivity) = p.ui.run { "engine=$engineName playing=$playing buffering=$buffering pos=$position dur=$duration msg=$message" }
-
-    private fun expectPlaying(p: PlayerActivity, engine: String, from: Long = 2_500, seconds: Int = 60) =
-        waitFor("Wiedergabe mit $engine", seconds, { state(p) }) { p.ui.engineName == engine && p.ui.playing && p.ui.position > from }
-
-    private val liveTs = PlayItem("LIVE:100", "Alpha HD", "$server/live/demo/demo/100.ts", live = true, streamId = "100")
-    private val liveHls = PlayItem("LIVE:101", "Nord Eins", "$server/live/demo/demo/101.m3u8", live = true, streamId = "101")
-    private val movie = PlayItem("MOVIE:200", "Sternenstaub", "$server/movie/demo/demo/200.mp4", live = false)
-    private val dolby = PlayItem("MOVIE:201", "Dolby Nacht", "$server/movie/demo/demo/201.mkv", live = false)
-
+class DeviceTest : DeviceBase() {
     // ---------- Wiedergabe ----------
 
     @Test
@@ -196,7 +82,7 @@ class DeviceTest {
         main { p.openPanel(PlayerPanel.SUBTITLES) }
         waitFor("Untertitelspur", 10) { p.ui.text.isNotEmpty() }
         main { p.pickText(p.ui.text.first().id) }
-        Thread.sleep(1500)
+        Thread.sleep(6000)
         shot("player_vlc_untertitel")
         main { p.seekTo(30_000) }
         waitFor("VLC springt", 20, { state(p) }) { p.ui.position > 29_000 && p.ui.playing }
@@ -222,6 +108,9 @@ class DeviceTest {
             p.ui.text.any { it.selected }
         }
         main { p.openPanel(null) }
+        val at = main { p.ui.position }
+        waitFor("läuft mit Untertiteln weiter", 20, { state(p) }) { p.ui.playing && p.ui.position > maxOf(at, 4_000) }
+        Thread.sleep(4000)
         shot("player_untertitel_extern")
     }
 
@@ -326,6 +215,14 @@ class DeviceTest {
         val vm = openApp()
         main { vm.open(Screen.MultiView) }
         Thread.sleep(1500)
+        clickOn("Sender wählen", 0)
+        clickOn("Alpha HD")
+        clickOn("Sender wählen", 0)
+        clickOn("Nord Eins")
+        clickOn("Sender wählen", 0)
+        clickOn("Sport Arena")
+        Thread.sleep(7000)
+        expectOnScreen("Alpha HD", "Nord Eins", "Sport Arena", "Ton an")
         shot("mehrere_sender")
     }
 

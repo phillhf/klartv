@@ -1,41 +1,46 @@
 # Klar TV
 
-Ein IPTV-Player für Android ohne Werbung und ohne Tracking: für Handy, Tablet und Android TV / Google TV.
-Später kommt Android Automotive dazu, dort nur im Stand.
+Ein IPTV-Player für Android ohne Werbung und ohne Tracking: für Handy, Tablet, Android TV / Google TV und
+(nur im Stand) Autos mit Android Automotive.
 
 Klar TV **enthält keine Sender und keine Inhalte**. Die App spielt nur ab, was dein eigener IPTV-Anbieter
 bereitstellt. Zugangsdaten, Favoriten und Verlauf bleiben auf dem Gerät.
 
 ## Funktionen
 
-- Anmeldung mit **Xtream Codes** (Server, Benutzername, Passwort) oder einer **M3U-Playlist**
-- Mehrere Anbieter, umschaltbar
-- Live-TV mit Kategorien, Umschalten mit Hoch/Runter oder den Kanaltasten der Fernbedienung
-- Programminfo (Jetzt/Danach) bei Xtream-Anbietern
-- Filme und Serien mit Cover, Beschreibung, Staffeln und Folgen
-- Weiterschauen an der Stelle, an der du aufgehört hast; Folgen laufen automatisch weiter
-- Favoriten, „Zuletzt gesehen“ und Suche über alles
-- Bedienung per Touch und per Fernbedienung (Android TV / Google TV)
-- Player: Media3/ExoPlayer (HLS, MPEG-TS, MP4, MKV), Ton- und Untertitelspur wählbar
+- Anmeldung mit **Xtream Codes** oder **M3U-Playlist**, mehrere Anbieter umschaltbar
+- **Startseite** mit Weiterschauen, eigenen Sendern, Neuem und Kategorien
+- **Live-TV** mit laufender Sendung, Live-Vorschau, Zifferneingabe und bis zu **vier Sendern gleichzeitig**
+- **Programmführer** als Raster (XMLTV, auch für M3U), **Catch-up** und „Von vorn“, wenn der Anbieter es kann
+- **Filme und Serien** mit Cover, Beschreibung, Besetzung, Trailer, Weiterschauen und automatisch nächster Folge
+- **Aufnahmen** (sofort oder geplant) und **Downloads**, beides im Hintergrund
+- **Zwei Player-Engines:** ExoPlayer und VLC; wechselt von selbst, wenn das Gerät ein Format nicht kann
+- Tonspuren, Untertitel (Größe, Farbe, eigene Dateien), Tempo, Bildformat, Schlaf-Timer, Bild im Bild, Chromecast
+- **Kindersicherung** mit PIN, sortierbare Favoriten, Suche über alles
+- Eigene Videos und Musik aus freigegebenen Ordnern
+- Sechs Designs, sechs Sprachen (Deutsch, Englisch, Französisch, Spanisch, Italienisch, Türkisch)
+- Freiwillig mit eigenem Schlüssel: Schauspielerbilder von TMDB, Untertitelsuche bei OpenSubtitles
 
-## Bauen
+## Bauen und Testen
 
 Gebaut wird mit GitHub Actions:
 
-- **Android Build** läuft bei jedem Push: Tests und Debug-APK.
-- **Release** startest du von Hand. Es baut das App-Bundle (AAB) für den Play Store und eine APK und legt
-  beide als Entwurfs-Release `neuester-build` ab.
+- **Android Build:** Übersetzungen, Unit-Tests, Screenshots der Oberfläche und Debug-APKs
+- **Emulator-Test:** spielt im Android-Emulator wirklich ab, nimmt auf und lädt herunter, gegen den
+  nachgebauten Anbieter `tools/demo_server.py`
+- **Release** (von Hand): App-Bundles für Play Store und Auto sowie je eine APK pro Prozessor, abgelegt als
+  Entwurfs-Release `neuester-build`
 
-Lokal geht es mit Android Studio oder `./gradlew assembleDebug`.
+Neue Texte laufen durch `t("…")`; `python tools/texte.py` zeigt, welche Übersetzungen fehlen.
 
-## Store-Grafiken
+Store-Grafiken neu erzeugen: `java -Djava.awt.headless=true tools/Grafiken.java .`
 
-`store/` enthält Icon, Feature-Grafik und TV-Banner. Neu erzeugen mit:
-
-```
-java -Djava.awt.headless=true tools/Grafiken.java .
-```
+Datenschutz: [docs/DATENSCHUTZ.md](docs/DATENSCHUTZ.md)
 
 ## Lizenz
 
 [PolyForm Noncommercial 1.0.0](LICENSE.md): privat frei nutzbar, kommerziell nur mit Genehmigung.
+
+Enthaltene Bibliotheken: libVLC ([LGPL 2.1](https://code.videolan.org/videolan/libvlcjni), unverändert und
+dynamisch eingebunden), AndroidX Media3 und Coil (Apache 2.0), Google Cast SDK. Diese Anwendung nutzt TMDB,
+ist aber nicht von TMDB geprüft oder zertifiziert.

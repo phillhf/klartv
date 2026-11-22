@@ -34,7 +34,8 @@ def prepare():
     # Dolby-Ton kann der Emulator nicht selbst dekodieren: prüft den Wechsel zu VLC
     srt = os.path.join(WORK, 'sub.srt')
     with open(srt, 'w', encoding='utf-8') as f:
-        f.write('1\n00:00:01,000 --> 00:00:50,000\nUntertitel mit Umlauten äöü\n')
+        for i in range(29):
+            f.write(f'{i + 1}\n00:00:{2 * i:02d},000 --> 00:00:{2 * i + 1:02d},800\nUntertitel {i + 1} mit Umlauten äöü\n\n')
     ffmpeg(*video, '-i', srt, '-t', '60', '-map', '0:v', '-map', '1:a', '-map', '2:s', *x264, '-c:a', 'eac3', '-c:s', 'srt',
            '-metadata:s:a:0', 'language=deu', '-metadata:s:s:0', 'language=deu', f'{WORK}/movie1.mkv')
     subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-re', '-stream_loop', '-1', '-i', f'{WORK}/live.ts', '-c', 'copy', '-f', 'hls',

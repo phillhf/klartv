@@ -23,7 +23,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testMobileDebugUnitTest
 
       # Upload-Schlüssel aus den Secrets. Fehlt er, signiert der Debug-Schlüssel (nicht für den Play Store).
       - name: Upload-Schlüssel bereitstellen
@@ -42,7 +42,10 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease assembleRelease
+        # Getrennt: Die Aufteilung nach Prozessor gilt nur für APKs, nicht für App-Bundles
+        run: |
+          ./gradlew assembleMobileRelease assembleCarRelease
+          ./gradlew bundleMobileRelease bundleCarRelease
 
       - name: Schlüsseldatei entfernen
         if: always()
@@ -55,11 +58,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          cp app/build/outputs/bundle/release/app-release.aab "KlarTV-$VERSION.aab"
-          cp app/build/outputs/apk/release/app-release.apk "KlarTV-$VERSION.apk"
+          cp app/build/outputs/bundle/mobileRelease/app-mobile-release.aab "KlarTV-$VERSION.aab"
+          cp app/build/outputs/bundle/carRelease/app-car-release.aab "KlarTV-$VERSION-Auto.aab"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            cp "app/build/outputs/apk/mobile/release/app-mobile-$abi-release.apk" "KlarTV-$VERSION-$abi.apk"
+          done
           gh release delete neuester-build --yes --cleanup-tag || true
           gh release create neuester-build --draft --target "$GITHUB_SHA" \
             --title "Klar TV $VERSION (Build ${{ github.run_number }})" \
             --notes "Automatisch gebaut aus $GITHUB_SHA. Nur zum Herunterladen." \
-            "KlarTV-$VERSION.aab" "KlarTV-$VERSION.apk" \
-            app/build/outputs/mapping/release/mapping.txt
+            KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk \
+            app/build/outputs/mapping/mobileRelease/mapping.txt

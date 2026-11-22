@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,15 +79,21 @@ fun MultiViewScreen(vm: AppViewModel) {
             t("Jedes Bild braucht eine eigene Verbindung. Dein Anbieter muss so viele gleichzeitig erlauben."),
             style = MaterialTheme.typography.bodySmall, color = Klar.TextDim, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp),
         )
-        for (row in 0..1) {
-            Row(Modifier.weight(1f).fillMaxWidth()) {
-                for (column in 0..1) {
-                    val i = row * 2 + column
-                    MultiTile(
-                        tiles[i], sound == i, Modifier.weight(1f).fillMaxSize().padding(3.dp),
-                        onFocused = { if (tiles[i] != null) sound = i },
-                        onClick = { if (tiles[i] != null && sound != i) sound = i else picking = i },
-                    )
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            // Hochkant untereinander, sonst im Viererraster
+            val columns = if (maxHeight > maxWidth) 1 else 2
+            Column(Modifier.fillMaxSize()) {
+                for (row in 0 until 4 / columns) {
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        for (column in 0 until columns) {
+                            val i = row * columns + column
+                            MultiTile(
+                                tiles[i], sound == i, Modifier.weight(1f).fillMaxSize().padding(3.dp),
+                                onFocused = { if (tiles[i] != null) sound = i },
+                                onClick = { if (tiles[i] != null && sound != i) sound = i else picking = i },
+                            )
+                        }
+                    }
                 }
             }
         }
