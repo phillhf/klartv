@@ -16,14 +16,14 @@ class DemoBackend : Backend {
     private val start = 1_760_000_000L
 
     private val channels = listOf(
-        "Alpha HD" to "1", "Nord Eins" to "1", "Süd Drei" to "1", "Kanal Plus" to "1", "Doku Welt" to "1", "Kino Plus" to "1",
+        "Alpha HD" to "1", "Nord Eins" to "1", "Süd Drei" to "1", "Kanal Vier" to "1", "Doku Welt" to "1", "Kinowelt" to "1",
         "Sport Arena 1" to "2", "Sport Arena 2" to "2", "Motor TV" to "2", "Fußball Live" to "2",
         "Nachrichten 24" to "3", "Welt Info" to "3", "Wirtschaft Aktuell" to "3",
         "Kids Star" to "4", "Toon Time" to "4", "Musik Live" to "5", "Retro Hits" to "5", "Natur Pur" to "1",
     )
 
     private val shows = listOf(
-        "Tagesblick", "Der große Check", "Expedition Nordmeer", "Krimi am Abend", "Live: Bundesliga", "Sportschau kompakt",
+        "Tagesblick", "Der große Check", "Expedition Nordmeer", "Krimi am Abend", "Live: Fußball am Samstag", "Sport kompakt",
         "Wetter und Verkehr", "Die Küchenprofis", "Planet der Wüsten", "Comedy Club", "Late Night Talk", "Spielfilm: Sternenstaub",
     )
 
