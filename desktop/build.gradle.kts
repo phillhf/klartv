@@ -91,6 +91,8 @@ tasks.test {
     systemProperty("compose.application.resources.dir", layout.buildDirectory.dir("appResources/windows-x64").get().asFile.path)
     systemProperty("klartv.out", layout.buildDirectory.dir("bilder").get().asFile.path)
     // Adresse eines Films für den VLC-Test, sonst wird er übersprungen
+    // Nie in die echten Daten des Nutzers schreiben
+    systemProperty("klartv.data", layout.buildDirectory.dir("testdaten").get().asFile.path)
     systemProperty("klartv.window", System.getProperty("klartv.window", ""))
     systemProperty("klartv.testVideo", System.getProperty("klartv.testVideo", ""))
     testLogging {

@@ -8,6 +8,10 @@ Klar TV has no server of its own, no accounts, no ads and no usage analytics.
 and recordings. This data is kept in the app's private storage, is excluded from cloud backup and is removed when
 you uninstall the app.
 
+**Windows:** Data is stored in `%LOCALAPPDATA%\Klar TV`. Credentials, favorites and history are encrypted with your
+Windows account. Recordings and downloads are stored in `Videos\Klar TV`. Both folders are kept on uninstall unless
+you choose otherwise.
+
 **Connections:**
 
 - to your **IPTV provider** and the addresses it supplies (streams, images, TV guide). Many providers use

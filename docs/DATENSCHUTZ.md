@@ -9,6 +9,10 @@ Klar TV hat keinen eigenen Server, kein Konto, keine Werbung und keine Auswertun
 Programmführer, Downloads und Aufnahmen. Die Daten liegen im privaten Bereich der App, sind von der
 Cloud-Sicherung ausgenommen und verschwinden mit der Deinstallation.
 
+**Windows:** Die Daten liegen unter `%LOCALAPPDATA%\Klar TV`. Zugangsdaten, Favoriten und Verlauf sind mit deinem
+Windows-Konto verschlüsselt. Aufnahmen und Downloads liegen unter `Videos\Klar TV`. Beide Ordner bleiben beim
+Deinstallieren erhalten, wenn du nichts anderes wählst.
+
 **Verbindungen:**
 
 - zu deinem **IPTV-Anbieter** und den Adressen, die er nennt (Streams, Bilder, Programmführer). Viele Anbieter

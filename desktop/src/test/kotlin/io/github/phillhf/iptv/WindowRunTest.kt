@@ -82,7 +82,6 @@ class WindowRunTest {
             x.responseBody.use { it.write(b) }
         }
         server.start()
-        System.setProperty("klartv.data", File(temp.root, "daten").path)
         System.setProperty("klartv.videos", File(temp.root, "videos").path)
         val context = AppContext.default
         AccountStore(context).apply {

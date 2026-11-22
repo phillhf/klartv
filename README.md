@@ -1,6 +1,6 @@
 # Klar TV
 
-Ein IPTV-Player für Android ohne Werbung und ohne Tracking: für Handy, Tablet, Android TV / Google TV und
+Ein IPTV-Player ohne Werbung und ohne Tracking: für Handy, Tablet, Android TV / Google TV, Windows und
 (nur im Stand) Autos mit Android Automotive.
 
 Klar TV **enthält keine Sender und keine Inhalte**. Die App spielt nur ab, was dein eigener IPTV-Anbieter
@@ -9,8 +9,8 @@ bereitstellt. Zugangsdaten, Favoriten und Verlauf bleiben auf dem Gerät.
 ## Herunterladen
 
 Auf der Seite [Releases](https://github.com/phillhf/klartv/releases/latest) steht im Dateinamen, für welches Gerät
-die Datei ist: `Handy-Tablet` oder `Fernseher-TV-Stick`. Meldet dein Gerät „App nicht installiert“ oder
-„nicht kompatibel“, nimm die jeweils andere. `NUR-PLAY-STORE` lässt sich nicht installieren.
+die Datei ist: `Handy-Tablet`, `Fernseher-TV-Stick` oder `Windows-Setup`. Meldet dein Gerät „App nicht installiert“ oder
+„nicht kompatibel“, nimm die jeweils andere Android-Datei. `NUR-PLAY-STORE` lässt sich nicht installieren.
 
 ## Funktionen
 
@@ -37,6 +37,11 @@ Gebaut wird mit GitHub Actions:
 - **Release** (von Hand): App-Bundles für Play Store und Auto sowie je eine APK pro Prozessor, veröffentlicht als
   GitHub-Release `v<Version>`
 
+- **Windows-App:** Tests, echtes Fenster mit Wiedergabe, Setup mit Installieren und Deinstallieren
+
+Android und Windows teilen sich den Code in `app/src/shared`; Android-Eigenes liegt in `app/src/main`,
+Windows-Eigenes in `desktop/`. Windows-App starten: `gradlew -p desktop run` (ohne Android-SDK, JDK 21).
+
 Neue Texte laufen durch `t("…")`; `python tools/texte.py` zeigt, welche Übersetzungen fehlen.
 
 Store-Grafiken neu erzeugen: `java -Djava.awt.headless=true tools/Grafiken.java .`
@@ -58,6 +63,6 @@ Der Schlüssel `app/debug.keystore` ist absichtlich öffentlich und nur für Tes
 
 [PolyForm Noncommercial 1.0.0](LICENSE.md): privat frei nutzbar, kommerziell nur mit Genehmigung.
 
-Enthaltene Bibliotheken: libVLC ([LGPL 2.1](https://code.videolan.org/videolan/libvlcjni), unverändert und
+Enthaltene Bibliotheken (Windows: [desktop/installer/DRITTANBIETER.txt](desktop/installer/DRITTANBIETER.txt)): libVLC ([LGPL 2.1](https://code.videolan.org/videolan/libvlcjni), unverändert und
 dynamisch eingebunden), AndroidX Media3 und Coil (Apache 2.0), Google Cast SDK. Diese Anwendung nutzt TMDB,
 ist aber nicht von TMDB geprüft oder zertifiziert.
