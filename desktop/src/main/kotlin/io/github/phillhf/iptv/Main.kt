@@ -40,16 +40,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.sun.jna.Native
-import com.sun.jna.Pointer
-import com.sun.jna.platform.win32.Kernel32
-import com.sun.jna.platform.win32.User32
-import com.sun.jna.platform.win32.WinBase
-import com.sun.jna.platform.win32.WinDef
-import com.sun.jna.win32.StdCallLibrary
 import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.BackStack
+import io.github.phillhf.iptv.platform.Win32
 import io.github.phillhf.iptv.platform.appIcon
 import io.github.phillhf.iptv.platform.openPrefs
 import io.github.phillhf.iptv.player.PlayerHost
@@ -65,7 +59,6 @@ import kotlinx.coroutines.delay
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Toolkit
-import java.awt.Window
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.RandomAccessFile
@@ -100,11 +93,9 @@ internal fun runApp() {
         var asking by remember { mutableStateOf(false) }
         val quit = {
             PlayerHost.close()
-            if (state.placement != WindowPlacement.Fullscreen) {
-                val e = prefs.edit().putBoolean("max", state.placement == WindowPlacement.Maximized)
-                if (state.placement == WindowPlacement.Floating) e.putInt("w", state.size.width.value.toInt()).putInt("h", state.size.height.value.toInt())
-                e.apply()
-            }
+            val e = prefs.edit().putBoolean("max", state.placement == WindowPlacement.Maximized)
+            if (state.placement == WindowPlacement.Floating) e.putInt("w", state.size.width.value.toInt()).putInt("h", state.size.height.value.toInt())
+            e.apply()
             Transfers.shutdown()
             exitApplication()
         }
@@ -117,27 +108,28 @@ internal fun runApp() {
         ) {
             LaunchedEffect(Unit) {
                 window.minimumSize = Dimension(360, 220)
-                darkTitleBar(window)
+                Win32.darkTitleBar(window)
             }
-            val before = remember { arrayOf(state.placement, state.placement) }
             LaunchedEffect(Unit) {
+                var before: Win32.Before? = null
                 PlayerHost.setFullscreen = { on ->
-                    val full = state.placement == WindowPlacement.Fullscreen
-                    if (on && !full) {
-                        before[0] = state.placement
-                        state.placement = WindowPlacement.Fullscreen
-                    } else if (!on && full) {
-                        state.placement = before[0]
+                    val old = before
+                    if (on && old == null) {
+                        before = Win32.enterFullscreen(window)
+                    } else if (!on && old != null) {
+                        Win32.leaveFullscreen(window, old)
+                        before = null
                     }
                     PlayerHost.session?.ui?.fullscreen = on
                 }
+                var placement = state.placement
                 var size = state.size
                 var position = state.position
                 var mini = false
                 PlayerHost.setMini = { on ->
                     if (on && !mini) {
                         PlayerHost.setFullscreen(false)
-                        before[1] = state.placement
+                        placement = state.placement
                         state.placement = WindowPlacement.Floating
                         size = state.size
                         position = state.position
@@ -150,7 +142,7 @@ internal fun runApp() {
                         window.isAlwaysOnTop = false
                         state.size = size
                         state.position = position
-                        state.placement = before[1]
+                        state.placement = placement
                         mini = false
                     }
                 }
@@ -172,7 +164,7 @@ internal fun runApp() {
             LaunchedEffect(playing, Transfers.busy) {
                 // Bildschirm an lassen, solange etwas läuft; bei Aufnahmen nur den Rechner wach halten
                 while (playing || Transfers.busy) {
-                    keepAwake(screen = playing)
+                    Win32.keepAwake(screen = playing)
                     delay(30_000)
                 }
             }
@@ -305,29 +297,9 @@ private fun onlyInstance(): Boolean = try {
         lockFile = f
         true
     } else {
-        User32.INSTANCE.FindWindow(null, TITLE)?.let {
-            User32.INSTANCE.ShowWindow(it, 9)
-            User32.INSTANCE.SetForegroundWindow(it)
-        }
+        Win32.showWindow(TITLE)
         false
     }
 } catch (e: java.io.IOException) {
     true
-}
-
-private interface Dwm : StdCallLibrary {
-    fun DwmSetWindowAttribute(hwnd: WinDef.HWND, attribute: Int, value: Pointer, size: Int): Int
-}
-
-private fun darkTitleBar(window: Window) {
-    runCatching {
-        val dwm = Native.load("dwmapi", Dwm::class.java)
-        val on = com.sun.jna.Memory(4).apply { setInt(0, 1) }
-        dwm.DwmSetWindowAttribute(WinDef.HWND(Native.getWindowPointer(window)), 20, on, 4)
-    }
-}
-
-private fun keepAwake(screen: Boolean) {
-    val flags = WinBase.ES_SYSTEM_REQUIRED or if (screen) WinBase.ES_DISPLAY_REQUIRED else 0
-    runCatching { Kernel32.INSTANCE.SetThreadExecutionState(flags) }
 }

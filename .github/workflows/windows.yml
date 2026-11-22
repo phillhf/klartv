@@ -34,8 +34,8 @@ jobs:
         run: |
           ./gradlew -p desktop createDistributable
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          ISCC=$(ls "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/c/Program Files/Inno Setup 6/ISCC.exe" 2>/dev/null | head -1)
-          if [ -z "$ISCC" ]; then choco install innosetup -y --no-progress > /dev/null; ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"; fi
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          [ -f "$ISCC" ] || choco install innosetup -y --no-progress > /dev/null
           MSYS_NO_PATHCONV=1 "$ISCC" "/DAppVersion=$VERSION" desktop/installer/KlarTV.iss
 
       - name: Setup installieren, starten, deinstallieren

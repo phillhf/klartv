@@ -117,6 +117,13 @@ class WindowRunTest {
         println("Fenster aktiv: ${ui { window().isFocused }}")
         press(KeyEvent.VK_F)
         waitFor("Vollbild", 10, state) { session.ui.fullscreen }
+        Thread.sleep(800)
+        val screen = java.awt.Toolkit.getDefaultToolkit().screenSize
+        ui {
+            val w = window() as javax.swing.JFrame
+            println("Vollbild ${w.bounds} Inhalt ${w.contentPane.size} Rand ${w.insets}")
+            assertTrue("Vollbild füllt nicht", w.contentPane.width == screen.width && w.contentPane.height == screen.height)
+        }
         shot("fenster_vollbild")
         press(KeyEvent.VK_ESCAPE)
         waitFor("kein Vollbild", 10, state) { !session.ui.fullscreen && PlayerHost.session != null }

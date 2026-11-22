@@ -118,6 +118,8 @@ object Vlc {
             "--no-video-title-show",
             "--no-metadata-network-access",
             "--network-caching=1500",
+            // Lieber kurz stocken als Klötzchen zeigen, wenn der Rechner nicht nachkommt
+            "--no-avcodec-hurry-up",
             "--freetype-rel-fontsize=$rel",
             "--freetype-color=$color",
             "--freetype-background-opacity=${AppSettings.subtitleBackground.coerceIn(0, 100) * 255 / 100}",
