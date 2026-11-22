@@ -1,12 +1,15 @@
 package io.github.phillhf.iptv
 
 import android.content.Intent
+import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
+import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Kind
+import io.github.phillhf.iptv.data.Library
 import io.github.phillhf.iptv.ui.Tab
 import org.junit.Assert.assertEquals
 import org.junit.FixMethodOrder
@@ -117,5 +120,47 @@ class TvTest : DeviceBase() {
         key(KeyEvent.KEYCODE_DPAD_CENTER)
         expectOnScreen("Beschreibung zu Sendung", "Aufnehmen", "Sender ansehen")
         shot("tv_sendung")
+    }
+
+    /** OK gedrückt halten, wie eine echte Fernbedienung: Wiederholungen, dann loslassen. */
+    private fun holdOk() {
+        dismissSystemDialogs()
+        val down = SystemClock.uptimeMillis()
+        repeat(16) { n ->
+            val flags = if (n == 1) KeyEvent.FLAG_LONG_PRESS else 0
+            ins.sendKeySync(KeyEvent(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_CENTER, n, 0, 0, 0, flags))
+            Thread.sleep(if (n == 0) 500 else 50)
+        }
+        ins.sendKeySync(KeyEvent(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_CENTER, 0))
+        Thread.sleep(800)
+    }
+
+    @Test
+    fun d4_removeContinue() {
+        val lib = Library(app, "test")
+        lib.continueList().forEach { lib.removeContinue(it.key) }
+        listOf("MOVIE:200" to "Sternenstaub", "MOVIE:201" to "Dolby Nacht").forEach { (key, title) ->
+            lib.updateContinue(ContinueEntry(key, key, title, null, null, "$server/movie/demo/demo/200.mp4", 30_000, 120_000))
+        }
+        val vm = openApp()
+        key(KeyEvent.KEYCODE_DPAD_DOWN)
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        holdOk()
+        expectOnScreen("Aus „Weiterschauen“ entfernen", "Fortsetzen")
+        shot("tv_weiterschauen_menue")
+        assertEquals("Langes Drücken darf nichts abspielen", null, player())
+        // Fortsetzen, Details, Entfernen, Abbrechen
+        key(KeyEvent.KEYCODE_DPAD_DOWN, 5)
+        key(KeyEvent.KEYCODE_DPAD_UP)
+        shot("tv_weiterschauen_menue_fokus")
+        key(KeyEvent.KEYCODE_DPAD_CENTER)
+        waitFor("entfernt", 10, { vm.continueList.toString() }) { vm.continueList.map { it.key } == listOf("MOVIE:200") }
+        Thread.sleep(1000)
+        shot("tv_weiterschauen_entfernt")
+        // Der Fokus steht auf dem übrigen Film: OK spielt ihn ab
+        key(KeyEvent.KEYCODE_DPAD_CENTER)
+        waitFor("OK spielt den nächsten") { player0() != null }
+        assertEquals("Sternenstaub", main { player()!!.ui.item?.title })
+        lib.removeContinue("MOVIE:200")
     }
 }

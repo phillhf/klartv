@@ -11,19 +11,24 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.LocalAsyncImagePreviewHandler
 import io.github.phillhf.iptv.data.Account
 import io.github.phillhf.iptv.data.AppSettings
+import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Kind
+import io.github.phillhf.iptv.data.Library
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.ui.KlarTheme
 import io.github.phillhf.iptv.ui.Tab
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -134,6 +139,44 @@ class FocusTest {
         press(Key.DirectionDown)
         until(Key.DirectionRight, "Sternenstaub", 4)
         until(Key.DirectionDown, "Wolkenkratzer", 8)
+    }
+
+    /** Lange OK auf „Weiterschauen“ öffnet das Menü; nach dem Entfernen bleibt der Fokus in der Reihe. */
+    @Test
+    fun removeContinue() {
+        Library(RuntimeEnvironment.getApplication(), "demo").apply {
+            updateContinue(ContinueEntry("MOVIE:m4", "MOVIE:m4", "Das Erbe der Wölfe", null, null, "", 2_400_000, 6_300_000))
+            updateContinue(ContinueEntry("MOVIE:m7", "MOVIE:m7", "Der stille Zeuge", null, null, "", 600_000, 5_900_000))
+            savePosition("MOVIE:m7", 600_000)
+        }
+        val vm = start(Tab.START)
+        press(Key.DirectionDown)
+        press(Key.DirectionRight)
+        removeFocused()
+        assertEquals(path.toString(), listOf("MOVIE:m4"), vm.continueList.map { it.key })
+        assertEquals(0L, vm.position("MOVIE:m7"))
+        assertTrue(path.toString(), focused().isNotEmpty())
+        // Der letzte Eintrag: Die Reihe verschwindet, der Fokus geht auf die nächste
+        removeFocused()
+        assertTrue(path.toString(), vm.continueList.isEmpty())
+        val before = focused()
+        press(Key.DirectionRight)
+        assertTrue(path.toString(), focused().isNotEmpty() && focused() != before)
+    }
+
+    private fun removeFocused() {
+        compose.onRoot().performKeyInput {
+            keyDown(Key.DirectionCenter)
+            advanceEventTime(1_000)
+            keyUp(Key.DirectionCenter)
+        }
+        compose.waitForIdle()
+        path += "lange -> ${focused()}"
+        compose.onNodeWithText("Aus „Weiterschauen“ entfernen").performClick()
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(500)
+        compose.waitForIdle()
+        path += "entfernt -> ${focused()}"
     }
 
     @Test

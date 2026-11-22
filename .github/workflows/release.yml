@@ -87,6 +87,5 @@ jobs:
           apk=app/build/outputs/apk/mobile/release/app-mobile
           cp "$apk-arm64-v8a-release.apk" "KlarTV-$VERSION-Handy-Tablet.apk"
           cp "$apk-armeabi-v7a-release.apk" "KlarTV-$VERSION-Fernseher-TV-Stick.apk"
-          cp "$apk-x86_64-release.apk" "KlarTV-$VERSION-Emulator-PC.apk"
           sed "s/@V@/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes --notes-file "$RUNNER_TEMP/notes.md" KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk

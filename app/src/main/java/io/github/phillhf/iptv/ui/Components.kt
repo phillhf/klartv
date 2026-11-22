@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -52,6 +53,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
@@ -116,6 +118,7 @@ fun FocusCard(
     modifier: Modifier = Modifier,
     shape: Shape = CardShape,
     onFocused: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -135,7 +138,13 @@ fun FocusCard(
             .clip(shape)
             .background(Klar.Surface)
             .border(2.dp, if (focused) Color.White else Color.Transparent, shape)
-            .clickable(onClick = onClick),
+            .onKeyEvent {
+                // Manche Fernbedienungen haben eine Menütaste
+                val menu = onLongClick != null && it.key == Key.Menu
+                if (menu && it.type == KeyEventType.KeyUp) onLongClick?.invoke()
+                menu
+            }
+            .combinedClickable(onLongClick = onLongClick, onClick = onClick),
     ) {
         content(focused)
     }
@@ -226,10 +235,11 @@ fun WideCard(
     modifier: Modifier = Modifier,
     progress: Float = 0f,
     onFocused: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Column(modifier) {
-        FocusCard(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), onFocused = onFocused) {
+        FocusCard(onClick, Modifier.fillMaxWidth().aspectRatio(16f / 9f), onFocused = onFocused, onLongClick = onLongClick) {
             ImageFallback(title)
             if (!image.isNullOrBlank()) {
                 AsyncImage(model = image, contentDescription = title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

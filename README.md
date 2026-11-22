@@ -9,8 +9,8 @@ bereitstellt. Zugangsdaten, Favoriten und Verlauf bleiben auf dem Gerät.
 ## Herunterladen
 
 Auf der Seite [Releases](https://github.com/phillhf/klartv/releases/latest) steht im Dateinamen, für welches Gerät
-die Datei ist: `Handy-Tablet`, `Fernseher-TV-Stick` oder `Emulator-PC`. Meldet dein Gerät „App nicht installiert“ oder
-„nicht kompatibel“, nimm die jeweils andere der beiden ersten Dateien. `NUR-PLAY-STORE` lässt sich nicht installieren.
+die Datei ist: `Handy-Tablet` oder `Fernseher-TV-Stick`. Meldet dein Gerät „App nicht installiert“ oder
+„nicht kompatibel“, nimm die jeweils andere. `NUR-PLAY-STORE` lässt sich nicht installieren.
 
 ## Funktionen
 

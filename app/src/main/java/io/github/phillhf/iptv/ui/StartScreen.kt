@@ -19,16 +19,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarViewDay
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -36,15 +39,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -88,7 +96,7 @@ fun spotFor(vm: AppViewModel, tile: Tile): Spot = when (tile) {
     is Tile.Resume -> Spot(
         title = tile.entry.title,
         meta = metaLine(tile.entry.subtitle, minutesLeft(tile.entry.position, tile.entry.duration)),
-        plot = null,
+        plot = t("Lange drücken für mehr Möglichkeiten"),
         backdrop = tile.entry.image,
         isCover = false,
         badge = t("WEITERSCHAUEN"),
@@ -173,16 +181,42 @@ fun buildShelves(vm: AppViewModel, featured: List<Stream>): List<ShelfData> {
 fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocusTile: (Tile) -> Unit) {
     val context = LocalContext.current
     val siblings = remember(data) { data.tiles.mapNotNull { (it as? Tile.Item)?.stream } }
+    var menu by remember { mutableStateOf<ContinueEntry?>(null) }
+    // Nach dem Entfernen fehlt die Kachel unter dem Fokus, dann übernimmt die auf ihrem Platz
+    var refocus by remember { mutableStateOf<Int?>(null) }
+    var cardFocused by remember { mutableStateOf(false) }
+    val requester = remember { FocusRequester() }
+    LaunchedEffect(refocus, data) {
+        val place = refocus ?: return@LaunchedEffect
+        repeat(3) { withFrameNanos { } }
+        runCatching { requester.requestFocus() }
+        if (cardFocused) data.tiles.getOrNull(place.coerceAtMost(data.tiles.lastIndex))?.let(onFocusTile)
+        refocus = null
+    }
+    menu?.let { entry ->
+        ContinueMenu(vm, entry, onDismiss = { menu = null }) {
+            refocus = data.tiles.indexOfFirst { (it as? Tile.Resume)?.entry == entry }.coerceAtLeast(0)
+            menu = null
+            vm.removeContinue(entry)
+        }
+    }
     Shelf(data.title, side) {
-        items(data.tiles) { tile ->
+        itemsIndexed(data.tiles) { index, tile ->
+            val place = refocus?.coerceAtMost(data.tiles.lastIndex)
+            val focusHere = if (index == place) {
+                Modifier.focusRequester(requester).onFocusChanged { cardFocused = it.hasFocus }
+            } else {
+                Modifier
+            }
             when (tile) {
                 is Tile.Resume -> WideCard(
                     title = tile.entry.title,
                     subtitle = metaLine(tile.entry.subtitle, minutesLeft(tile.entry.position, tile.entry.duration)),
                     image = tile.entry.image,
                     progress = tile.entry.progress,
-                    modifier = Modifier.width(if (wide) 212.dp else 236.dp),
+                    modifier = focusHere.width(if (wide) 212.dp else 236.dp),
                     onFocused = { onFocusTile(tile) },
+                    onLongClick = { menu = tile.entry },
                 ) { vm.playContinue(context, tile.entry) }
                 is Tile.Item -> {
                     val s = tile.stream
@@ -192,7 +226,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                             title = s.name,
                             subtitle = metaLine(kindLabel(s.kind), s.year, s.genre),
                             image = wideImage(vm, s),
-                            modifier = Modifier.width(if (wide) 212.dp else 236.dp),
+                            modifier = focusHere.width(if (wide) 212.dp else 236.dp),
                             onFocused = { vm.focus(s); onFocusTile(tile) },
                             onClick = open,
                         )
@@ -201,7 +235,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                             image = s.logo,
                             rating = s.rating,
                             progress = vm.progress(s.key),
-                            modifier = Modifier.width(if (wide) 124.dp else 112.dp),
+                            modifier = focusHere.width(if (wide) 124.dp else 112.dp),
                             onFocused = { vm.focus(s); onFocusTile(tile) },
                             onClick = open,
                         )
@@ -211,7 +245,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                                 name = s.name,
                                 logo = s.logo,
                                 now = currentAndNext(vm.nowEpg[s.id].orEmpty()).first,
-                                modifier = Modifier.width(if (wide) 200.dp else 180.dp),
+                                modifier = focusHere.width(if (wide) 200.dp else 180.dp),
                                 onFocused = { onFocusTile(tile) },
                                 onClick = open,
                             )
@@ -221,6 +255,34 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
             }
         }
     }
+}
+
+/** Menü einer Kachel in „Weiterschauen“ (lange drücken oder Menütaste). */
+@Composable
+private fun ContinueMenu(vm: AppViewModel, entry: ContinueEntry, onDismiss: () -> Unit, onRemove: () -> Unit) {
+    val context = LocalContext.current
+    val stream = remember(entry) { vm.findStream(entry.parentKey) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Klar.Surface,
+        title = { Text(entry.title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LabelButton(Icons.Filled.PlayArrow, t("Fortsetzen")) {
+                    onDismiss()
+                    vm.playContinue(context, entry)
+                }
+                if (stream != null) {
+                    LabelButton(Icons.Filled.Info, t("Details")) {
+                        onDismiss()
+                        vm.openStream(context, stream, listOf(stream))
+                    }
+                }
+                LabelButton(Icons.Filled.Delete, t("Aus „Weiterschauen“ entfernen"), onClick = onRemove)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.focusRing(Pill)) { Text(t("Abbrechen")) } },
+    )
 }
 
 @Composable
