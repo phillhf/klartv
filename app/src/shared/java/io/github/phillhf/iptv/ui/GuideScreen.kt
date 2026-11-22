@@ -47,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +61,7 @@ import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.Stream
+import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.toPlayItem
 import io.github.phillhf.iptv.transfer.TransferState
@@ -121,7 +121,7 @@ fun GuideScreen(vm: AppViewModel, wide: Boolean) {
 
 @Composable
 private fun Guide(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val current = vm.lastCategory[Kind.LIVE] ?: Catalog.ALL
     val list = remember(catalog, current, vm.favorites) {
         if (current == FAVORITES) vm.favoriteStreams(Kind.LIVE) else catalog.inCategory(current)
@@ -294,7 +294,7 @@ private fun Cell(s: Stream, c: GuideCell, now: Long, x: Dp, scroll: ScrollState,
 /** Details einer Sendung mit allem, was man damit tun kann. */
 @Composable
 fun ProgrammeDialog(vm: AppViewModel, s: Stream, e: EpgEntry, onDismiss: () -> Unit, onWatch: () -> Unit) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val now = System.currentTimeMillis()
     var note by remember { mutableStateOf<String?>(null) }
     val askNotify = rememberNotificationPermission()

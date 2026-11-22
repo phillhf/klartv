@@ -1,23 +1,13 @@
 package io.github.phillhf.iptv
 
-import android.app.Application
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.phillhf.iptv.data.AppSettings
-import io.github.phillhf.iptv.transfer.Transfers
+import io.github.phillhf.iptv.platform.AppContext
+import io.github.phillhf.iptv.platform.openAsset
 import org.json.JSONObject
 import java.util.Locale
-
-class KlarApp : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        AppSettings.init(this)
-        I18n.init(this)
-        Transfers.init(this)
-    }
-}
 
 /**
  * Übersetzungen. Schlüssel ist der deutsche Text; die Tabellen liegen unter assets/lang. Fehlt ein Text,
@@ -30,7 +20,7 @@ object I18n {
 
     private var table by mutableStateOf<Map<String, String>>(emptyMap())
 
-    fun init(context: Context) {
+    fun init(context: AppContext) {
         val wanted = AppSettings.language.ifEmpty { Locale.getDefault().language }
         val lang = if (languages.any { it.first == wanted }) wanted else "en"
         table = when (lang) {
@@ -40,8 +30,8 @@ object I18n {
         }
     }
 
-    private fun load(context: Context, lang: String): Map<String, String> = runCatching {
-        val o = JSONObject(context.assets.open("lang/$lang.json").bufferedReader().use { it.readText() })
+    private fun load(context: AppContext, lang: String): Map<String, String> = runCatching {
+        val o = JSONObject(context.openAsset("lang/$lang.json").bufferedReader().use { it.readText() })
         o.keys().asSequence().associateWith { o.getString(it) }
     }.getOrDefault(emptyMap())
 

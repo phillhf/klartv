@@ -1,8 +1,9 @@
 package io.github.phillhf.iptv.data
 
-import android.content.Context
-import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateMapOf
+import io.github.phillhf.iptv.platform.AppContext
+import io.github.phillhf.iptv.platform.Prefs
+import io.github.phillhf.iptv.platform.openPrefs
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
@@ -15,11 +16,11 @@ enum class EngineChoice { AUTO, EXO, VLC }
 
 /** Einstellungen der App. Änderungen sind sofort in der Oberfläche sichtbar. */
 object AppSettings {
-    private var prefs: SharedPreferences? = null
+    private var prefs: Prefs? = null
     private val state = mutableStateMapOf<String, Any>()
 
-    fun init(context: Context) {
-        val p = context.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    fun init(context: AppContext) {
+        val p = context.openPrefs("settings")
         if (p === prefs) return
         prefs = p
         state.clear()

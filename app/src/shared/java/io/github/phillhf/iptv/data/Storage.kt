@@ -1,6 +1,8 @@
 package io.github.phillhf.iptv.data
 
-import android.content.Context
+import io.github.phillhf.iptv.platform.AppContext
+import io.github.phillhf.iptv.platform.deletePrefs
+import io.github.phillhf.iptv.platform.openPrefs
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -37,8 +39,8 @@ data class Account(
 }
 
 /** Konten und Einstellungen. Liegen nur in den privaten App-Daten auf diesem Gerät. */
-class AccountStore(context: Context) {
-    private val prefs = context.getSharedPreferences("accounts", Context.MODE_PRIVATE)
+class AccountStore(context: AppContext) {
+    private val prefs = context.openPrefs("accounts")
 
     fun all(): List<Account> = runCatching {
         val arr = JSONArray(prefs.getString("list", "[]"))
@@ -67,8 +69,8 @@ class AccountStore(context: Context) {
 }
 
 /** Favoriten, zuletzt gesehen und Wiedergabepositionen, getrennt pro Konto. */
-class Library(context: Context, accountId: String) {
-    private val prefs = context.getSharedPreferences("library_$accountId", Context.MODE_PRIVATE)
+class Library(context: AppContext, accountId: String) {
+    private val prefs = context.openPrefs("library_$accountId")
 
     /** Favoriten in der Reihenfolge des Nutzers. Bis 0.2.0 waren sie eine ungeordnete Menge. */
     fun favorites(): List<String> {
@@ -163,8 +165,8 @@ class Library(context: Context, accountId: String) {
     }
 
     companion object {
-        fun delete(context: Context, accountId: String) {
-            context.deleteSharedPreferences("library_$accountId")
+        fun delete(context: AppContext, accountId: String) {
+            context.deletePrefs("library_$accountId")
         }
     }
 }

@@ -1,6 +1,5 @@
 package io.github.phillhf.iptv.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
@@ -69,16 +68,16 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
-import io.github.phillhf.iptv.R
 import io.github.phillhf.iptv.Screen
 import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
+import io.github.phillhf.iptv.platform.BackHandler
+import io.github.phillhf.iptv.platform.appIcon
 import io.github.phillhf.iptv.t
 
 enum class Tab(val label: String, val icon: ImageVector) {
@@ -158,7 +157,7 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Row(Modifier.padding(start = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(44.dp))
+            Image(appIcon(), contentDescription = null, modifier = Modifier.size(44.dp))
             AnimatedVisibility(expanded, enter = fadeIn(), exit = fadeOut()) {
                 Row(Modifier.padding(start = 6.dp)) {
                     Text("Klar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)

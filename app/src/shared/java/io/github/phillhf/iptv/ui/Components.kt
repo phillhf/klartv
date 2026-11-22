@@ -1,7 +1,5 @@
 package io.github.phillhf.iptv.ui
 
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -72,12 +70,11 @@ import coil3.compose.AsyncImage
 import io.github.phillhf.iptv.data.Category
 import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
+import io.github.phillhf.iptv.platform.isKeyRepeat
 import io.github.phillhf.iptv.t
 
 val Pill = RoundedCornerShape(50)
 val CardShape = RoundedCornerShape(12.dp)
-
-fun isTv(context: Context): Boolean = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 
 /**
  * Deutlicher Rahmen um das Element unter dem Fokus. Auf dem Fernseher sieht man nur so, wo man mit der
@@ -117,7 +114,7 @@ fun Modifier.leaveWithArrows(): Modifier {
 fun Modifier.ignoreHeldKey(): Modifier {
     var ready by remember { mutableStateOf(false) }
     return onPreviewKeyEvent {
-        if (it.type == KeyEventType.KeyDown && it.nativeKeyEvent.repeatCount == 0) ready = true
+        if (it.type == KeyEventType.KeyDown && !isKeyRepeat(it)) ready = true
         !ready
     }
 }

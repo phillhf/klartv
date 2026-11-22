@@ -4,11 +4,6 @@ import android.net.Uri
 import android.view.View
 import io.github.phillhf.iptv.PlayItem
 
-/** Eine Ton- oder Untertitelspur. [id] gilt nur für die Engine, die sie geliefert hat. */
-data class Track(val id: String, val label: String, val selected: Boolean)
-
-enum class ScaleMode { FIT, ZOOM, STRETCH }
-
 /** Gemeinsame Sicht auf ExoPlayer und VLC, damit die Oberfläche nicht wissen muss, wer abspielt. */
 interface Engine {
     val name: String

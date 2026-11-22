@@ -19,7 +19,8 @@ EXTRA = ['Start', 'Live-TV', 'Programm', 'Filme', 'Serien', 'Favoriten', 'Mediat
 
 
 def sources():
-    for p in sorted(glob.glob(os.path.join(ROOT, 'java', '**', '*.kt'), recursive=True)):
+    places = [os.path.join(ROOT, 'java'), os.path.join(ROOT, '..', 'shared'), os.path.join(ROOT, '..', '..', '..', 'desktop', 'src', 'main')]
+    for p in sorted(x for d in places for x in glob.glob(os.path.join(d, '**', '*.kt'), recursive=True)):
         yield p, open(p, encoding='utf-8').read()
 
 

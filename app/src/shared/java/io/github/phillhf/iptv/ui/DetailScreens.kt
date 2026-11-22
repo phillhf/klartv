@@ -1,7 +1,5 @@
 package io.github.phillhf.iptv.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,6 +14,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import coil3.compose.AsyncImage
 import io.github.phillhf.iptv.data.Person
+import io.github.phillhf.iptv.platform.LocalAppContext
+import io.github.phillhf.iptv.platform.isTv
+import io.github.phillhf.iptv.platform.openUrl
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.transfer.TransferState
 import io.github.phillhf.iptv.transfer.TransferType
@@ -60,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -174,10 +174,10 @@ private fun DownloadButton(key: String, onClick: () -> Unit) {
 
 @Composable
 private fun TrailerButton(trailer: String?) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val url = trailerUrl(trailer) ?: return
     OutlinedButton(
-        onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+        onClick = { context.openUrl(url) },
         modifier = Modifier.focusRing(Pill),
     ) {
         Icon(Icons.Filled.Theaters, contentDescription = null, tint = Klar.Text)
@@ -227,7 +227,7 @@ private fun SimilarShelf(vm: AppViewModel, stream: Stream, wide: Boolean) {
 
 @Composable
 fun MovieScreen(vm: AppViewModel, stream: Stream) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     LaunchedEffect(stream.key) {
         val loaded = vm.vodInfo(stream)
         vm.loadTmdb(stream, loaded?.year ?: stream.year, loaded?.tmdbId)
@@ -282,7 +282,7 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
 
 @Composable
 fun SeriesScreen(vm: AppViewModel, stream: Stream) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     var state by remember(stream.key) { mutableStateOf<Load<SeriesInfo>>(Load.Loading) }
     LaunchedEffect(stream.key) {
         val loaded = vm.seriesInfo(stream)

@@ -78,7 +78,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -88,6 +87,7 @@ import io.github.phillhf.iptv.PlayerUi
 import io.github.phillhf.iptv.cast.Caster
 import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.EngineChoice
+import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.player.ScaleMode
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.transfer.Transfers
@@ -279,7 +279,7 @@ private class Choice(val label: String, val selected: Boolean = false, val hint:
 
 @Composable
 private fun Panel(panel: PlayerPanel, ui: PlayerUi, actions: PlayerActions) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val title: String
     val choices: List<Choice>
     when (panel) {

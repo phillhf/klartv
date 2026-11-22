@@ -68,6 +68,9 @@ android {
         }
     }
 
+    // Code, den sich Android und Windows (desktop/) teilen
+    sourceSets.getByName("main").kotlin.directories += "src/shared/java"
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"

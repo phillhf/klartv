@@ -1,15 +1,11 @@
 package io.github.phillhf.iptv
 
-import android.app.Application
-import android.content.Context
-import android.content.Intent
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.phillhf.iptv.data.Account
 import io.github.phillhf.iptv.data.AccountStatus
@@ -37,6 +33,10 @@ import io.github.phillhf.iptv.data.Xmltv
 import io.github.phillhf.iptv.data.XtreamBackend
 import io.github.phillhf.iptv.data.friendlyError
 import io.github.phillhf.iptv.data.looksAdult
+import io.github.phillhf.iptv.platform.AppApplication
+import io.github.phillhf.iptv.platform.AppContext
+import io.github.phillhf.iptv.platform.BaseViewModel
+import io.github.phillhf.iptv.platform.openPlayer
 import io.github.phillhf.iptv.transfer.Transfer
 import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.Tab
@@ -68,7 +68,7 @@ sealed interface EpgState {
     data class Error(val message: String) : EpgState
 }
 
-class AppViewModel(app: Application) : AndroidViewModel(app) {
+class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     private val store = AccountStore(app)
 
     /** Woher die Daten kommen. Screenshots setzen hier eine Beispiel-Quelle ein. */
@@ -162,7 +162,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         backend = b
         active = a
         store.activeId = a.id
-        library = Library(getApplication(), a.id).also {
+        library = Library(app, a.id).also {
             favorites = it.favorites()
             recent = it.recent()
             continueList = it.continueList()
@@ -203,7 +203,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteAccount(a: Account) {
         accounts = accounts.filter { it.id != a.id }
         store.save(accounts)
-        Library.delete(getApplication(), a.id)
+        Library.delete(app, a.id)
         viewModelScope.launch(Dispatchers.IO) { runCatching { epgDb.remove(a.id) } }
         if (active?.id == a.id) {
             val next = accounts.firstOrNull()
@@ -582,7 +582,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    fun playCatchup(context: Context, s: Stream, e: EpgEntry, failed: () -> Unit) {
+    fun playCatchup(context: AppContext, s: Stream, e: EpgEntry, failed: () -> Unit) {
         viewModelScope.launch {
             val item = catchupItem(s, e)
             if (item != null) play(context, listOf(item), 0) else failed()
@@ -597,16 +597,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun downloadEpisode(series: Stream, info: SeriesInfo?, e: Episode) = Transfers.download(episodeItem(series, info, e))
 
-    fun playTransfer(context: Context, x: Transfer) {
+    fun playTransfer(context: AppContext, x: Transfer) {
         val lib = library ?: return
         val item = PlayItem(
-            key = "FILE:${x.id}", title = x.title, subtitle = x.subtitle, url = android.net.Uri.fromFile(java.io.File(x.file)).toString(),
+            key = "FILE:${x.id}", title = x.title, subtitle = x.subtitle, url = java.io.File(x.file).toURI().toASCIIString().replaceFirst("file:/", "file:///"),
             live = false, image = x.image, local = true,
         )
         playItems(context, lib, listOf(item), 0)
     }
 
-    fun playLocal(context: Context, items: List<PlayItem>, index: Int) {
+    fun playLocal(context: AppContext, items: List<PlayItem>, index: Int) {
         val lib = library ?: return
         playItems(context, lib, items, index)
     }
@@ -641,12 +641,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun play(context: Context, items: List<PlayItem>, index: Int) {
+    fun play(context: AppContext, items: List<PlayItem>, index: Int) {
         val lib = library ?: return
         playItems(context, lib, items, index)
     }
 
-    private fun playItems(context: Context, lib: Library, items: List<PlayItem>, index: Int) {
+    private fun playItems(context: AppContext, lib: Library, items: List<PlayItem>, index: Int) {
         if (items.isEmpty()) return
         PlaybackQueue.items = items
         PlaybackQueue.startIndex = index.coerceIn(items.indices)
@@ -659,16 +659,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 recent = lib.recent()
             }
         }
-        context.startActivity(Intent(context, PlayerActivity::class.java))
+        context.openPlayer()
     }
 
-    fun playMovie(context: Context, s: Stream, fromStart: Boolean) {
+    fun playMovie(context: AppContext, s: Stream, fromStart: Boolean) {
         if (fromStart) library?.clearPosition(s.key)
         val image = vodInfos[s.key]?.backdrop ?: s.logo
         play(context, listOf(s.toPlayItem(image)), 0)
     }
 
-    fun playEpisodes(context: Context, series: Stream, info: SeriesInfo?, episodes: List<Episode>, index: Int) {
+    fun playEpisodes(context: AppContext, series: Stream, info: SeriesInfo?, episodes: List<Episode>, index: Int) {
         play(context, episodes.map { episodeItem(series, info, it) }, index)
     }
 
@@ -683,7 +683,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     /** Spielt weiter; bei Serien mit allen folgenden Folgen, damit es danach von selbst weitergeht. */
-    fun playContinue(context: Context, e: ContinueEntry) {
+    fun playContinue(context: AppContext, e: ContinueEntry) {
         viewModelScope.launch {
             val series = findStream(e.parentKey)?.takeIf { it.kind == Kind.SERIES && e.key.startsWith("EP:") }
             val info = series?.let { withTimeoutOrNull(6_000) { seriesInfo(it) } as? Load.Ready<SeriesInfo> }?.value
@@ -702,7 +702,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Öffnet einen Eintrag: Sender spielen sofort, Filme und Serien zeigen erst ihre Seite. */
-    fun openStream(context: Context, s: Stream, siblings: List<Stream>) {
+    fun openStream(context: AppContext, s: Stream, siblings: List<Stream>) {
         when (s.kind) {
             Kind.LIVE -> {
                 val live = siblings.filter { it.kind == Kind.LIVE }.ifEmpty { listOf(s) }

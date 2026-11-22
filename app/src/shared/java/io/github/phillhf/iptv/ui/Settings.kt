@@ -1,7 +1,5 @@
 package io.github.phillhf.iptv.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,13 +51,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
-import io.github.phillhf.iptv.BuildConfig
 import io.github.phillhf.iptv.EpgState
 import io.github.phillhf.iptv.I18n
 import io.github.phillhf.iptv.Screen
@@ -68,13 +64,16 @@ import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.EngineChoice
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.SourceType
+import io.github.phillhf.iptv.platform.LocalAppContext
+import io.github.phillhf.iptv.platform.appVersion
+import io.github.phillhf.iptv.platform.openUrl
 import io.github.phillhf.iptv.t
 import java.text.DateFormat
 import java.util.Date
 
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     var toDelete by remember { mutableStateOf<Account?>(null) }
     var newPin by remember { mutableStateOf(false) }
     var editLocks by remember { mutableStateOf(false) }
@@ -194,7 +193,7 @@ fun SettingsScreen(vm: AppViewModel) {
         }
 
         Section(t("Über die App")) {
-            Text("Klar TV ${BuildConfig.VERSION_NAME}")
+            Text("Klar TV $appVersion")
             Dim(
                 t(
                     "Klar TV enthält keine Sender und keine Inhalte. Die App spielt nur ab, was dein eigener Anbieter bereitstellt. " +
@@ -258,10 +257,10 @@ private fun Dim(text: String) {
 /** Die Adresse steht auch als Text da: Fernseher haben oft keinen Browser. */
 @Composable
 private fun PrivacyLink() {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val url = "https://github.com/phillhf/klartv/blob/main/docs/" + if (I18n.german) "DATENSCHUTZ.md" else "PRIVACY.md"
     Action(null, t("Datenschutzerklärung")) {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        context.openUrl(url)
     }
     Dim(url)
 }

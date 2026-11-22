@@ -54,7 +54,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -68,6 +67,7 @@ import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.Stream
+import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.t
 import kotlinx.coroutines.delay
 
@@ -179,7 +179,7 @@ fun buildShelves(vm: AppViewModel, featured: List<Stream>): List<ShelfData> {
 
 @Composable
 fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocusTile: (Tile) -> Unit) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val siblings = remember(data) { data.tiles.mapNotNull { (it as? Tile.Item)?.stream } }
     var menu by remember { mutableStateOf<ContinueEntry?>(null) }
     // Nach dem Entfernen fehlt die Kachel unter dem Fokus, dann übernimmt die auf ihrem Platz
@@ -260,7 +260,7 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
 /** Menü einer Kachel in „Weiterschauen“ (lange drücken oder Menütaste). */
 @Composable
 private fun ContinueMenu(vm: AppViewModel, entry: ContinueEntry, onDismiss: () -> Unit, onRemove: () -> Unit) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val stream = remember(entry) { vm.findStream(entry.parentKey) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -382,7 +382,7 @@ private fun PhoneHeader(vm: AppViewModel, modifier: Modifier = Modifier) {
 
 @Composable
 private fun HeroPager(vm: AppViewModel, featured: List<Stream>) {
-    val context = LocalContext.current
+    val context = LocalAppContext.current
     val pager = rememberPagerState { featured.size }
     val still = LocalInspectionMode.current
     LaunchedEffect(pager, featured.size) {
