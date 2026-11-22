@@ -53,6 +53,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -106,6 +107,19 @@ fun Modifier.leaveWithArrows(): Modifier {
         }
         if (it.type == KeyEventType.KeyDown) manager.moveFocus(direction)
         true
+    }
+}
+
+/**
+ * Für Menüs, die durch langes Drücken aufgehen: Die noch gehaltene Taste wiederholt sich und würde sonst gleich den
+ * ersten Eintrag auslösen. Erst ein neuer Tastendruck zählt.
+ */
+@Composable
+fun Modifier.ignoreHeldKey(): Modifier {
+    var ready by remember { mutableStateOf(false) }
+    return onPreviewKeyEvent {
+        if (it.type == KeyEventType.KeyDown && it.nativeKeyEvent.repeatCount == 0) ready = true
+        !ready
     }
 }
 

@@ -62,6 +62,8 @@ def xmltv():
             out.append(f'<programme start="{s.strftime(fmt)}" stop="{e.strftime(fmt)}" channel="CH{i}.demo">'
                        f'<title lang="de">{title} &amp; mehr</title><desc lang="de">Beschreibung zu {title}.</desc></programme>')
     out.append('</tv>')
+    # Wie bei echten Anbietern: noch ein Dokument und Text nach dem Ende
+    out.append('\n<?xml version="1.0"?><!DOCTYPE tv SYSTEM "xmltv.dtd"><tv></tv>\nWarning: x & y < z')
     return ''.join(out).encode()
 
 

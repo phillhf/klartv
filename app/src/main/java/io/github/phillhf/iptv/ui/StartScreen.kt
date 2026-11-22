@@ -264,6 +264,7 @@ private fun ContinueMenu(vm: AppViewModel, entry: ContinueEntry, onDismiss: () -
     val stream = remember(entry) { vm.findStream(entry.parentKey) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.ignoreHeldKey(),
         containerColor = Klar.Surface,
         title = { Text(entry.title) },
         text = {
