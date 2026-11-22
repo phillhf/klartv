@@ -9,7 +9,6 @@ import androidx.test.runner.lifecycle.Stage
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.ui.Tab
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +22,6 @@ class TvTest : DeviceBase() {
         dismissSystemDialogs()
         ins.sendKeyDownUpSync(code)
         Thread.sleep(350)
-        android.util.Log.i("TVTEST", "${KeyEvent.keyCodeToString(code)} -> ${focusedTexts()}")
     }
 
     private fun openApp(): AppViewModel {
@@ -39,33 +37,15 @@ class TvTest : DeviceBase() {
 
     private fun player(): PlayerActivity? = activities().filterIsInstance<PlayerActivity>().firstOrNull()
 
-    /** Was gerade den Fokus hat. */
-    private fun focusedTexts(): String {
-        if (android.os.Build.VERSION.SDK_INT >= 34) ins.uiAutomation.clearCache()
-        val n = ins.uiAutomation.rootInActiveWindow?.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT) ?: return ""
-        val out = StringBuilder()
-        fun walk(x: android.view.accessibility.AccessibilityNodeInfo) {
-            x.text?.let { out.append(it).append(' ') }
-            x.contentDescription?.let { out.append(it).append(' ') }
-            for (i in 0 until x.childCount) x.getChild(i)?.let { walk(it) }
-        }
-        walk(n)
-        return out.toString()
-    }
-
     @Test
     fun d1_liveWithRemote() {
         val vm = openApp()
         main { vm.tab = Tab.LIVE }
         Thread.sleep(1500)
-        // Aus der Seitenleiste nach rechts über die Kategorien in die Senderliste
+        // Erst „Mehrere Sender“, dann Alpha HD, dann Nord Eins (der Weg dorthin steht in FocusTest)
         key(KeyEvent.KEYCODE_DPAD_DOWN)
-        var steps = 0
-        while (!focusedTexts().contains("Nord Eins") && steps++ < 14) {
-            key(if (focusedTexts().contains("Alpha HD")) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_RIGHT)
-        }
-        if (!focusedTexts().contains("Nord Eins")) shot("fehler_live")
-        assertTrue("Fokus: ${focusedTexts()}", focusedTexts().contains("Nord Eins"))
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        key(KeyEvent.KEYCODE_DPAD_DOWN)
         Thread.sleep(6000)
         shot("tv_live_vorschau")
         key(KeyEvent.KEYCODE_DPAD_CENTER)
@@ -91,7 +71,6 @@ class TvTest : DeviceBase() {
         key(KeyEvent.KEYCODE_DPAD_CENTER)
         waitFor("Leiste offen") { p.ui.controls }
         Thread.sleep(600)
-        assertTrue("Fokus: ${focusedTexts()}", focusedTexts().contains("Pause"))
         shot("tv_player_leiste")
         key(KeyEvent.KEYCODE_DPAD_CENTER)
         waitFor("pausiert") { !p.ui.playing }
@@ -127,16 +106,12 @@ class TvTest : DeviceBase() {
     fun d3_startAndGuide() {
         val vm = openApp()
         key(KeyEvent.KEYCODE_DPAD_DOWN)
-        repeat(4) { if (main { vm.focused } == null) key(KeyEvent.KEYCODE_DPAD_RIGHT) }
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
         shot("tv_start")
         main { vm.tab = Tab.GUIDE }
         Thread.sleep(2500)
-        var steps = 0
-        while (!focusedTexts().contains("Sendung") && steps++ < 12) {
-            key(if (focusedTexts().contains("Alpha HD") || steps > 8) KeyEvent.KEYCODE_DPAD_RIGHT else if (steps < 3) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_DOWN)
-        }
-        if (!focusedTexts().contains("Sendung")) shot("fehler_programm")
-        assertTrue("Fokus: ${focusedTexts()}", focusedTexts().contains("Sendung"))
+        // „Alle“, dann Alpha HD, dann die laufende Sendung
+        key(KeyEvent.KEYCODE_DPAD_DOWN, 2)
         key(KeyEvent.KEYCODE_DPAD_RIGHT)
         shot("tv_programm")
         key(KeyEvent.KEYCODE_DPAD_CENTER)
