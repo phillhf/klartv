@@ -9,6 +9,7 @@ import io.github.phillhf.iptv.data.Library
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.Prefs
+import io.github.phillhf.iptv.platform.openPrefs
 import io.github.phillhf.iptv.player.Vlc
 import io.github.phillhf.iptv.player.VlcPlayer
 import io.github.phillhf.iptv.transfer.TransferState
@@ -82,6 +83,70 @@ class WindowsTest {
         assertEquals(c, io.github.phillhf.iptv.data.Custom.fromJson(c.toJson()))
         assertEquals(io.github.phillhf.iptv.data.Custom(), io.github.phillhf.iptv.data.Custom.fromJson("kaputt"))
         assertEquals(io.github.phillhf.iptv.data.Custom(), io.github.phillhf.iptv.data.Custom.fromJson(null))
+    }
+
+    @Test
+    fun syncBetweenDevices() {
+        val phone = AppContext(File(temp.root, "handy"))
+        val tv = AppContext(File(temp.root, "fernseher"))
+        AccountStore(phone).apply {
+            save(listOf(Account("a", "Anbieter", SourceType.XTREAM, "http://a.example", "u", "geheim")))
+            activeId = "a"
+        }
+        Library(phone, "a").apply {
+            toggleFavorite("LIVE:7")
+            savePosition("MOVIE:1", 123_456L)
+            saveCustom(io.github.phillhf.iptv.data.Custom(hiddenStreams = setOf("LIVE:9")))
+        }
+        phone.openPrefs("settings").edit().putString("theme", "VIOLET").putBoolean("matchFrameRate", true).putInt("subtitleSize", 130).apply()
+        // Der Fernseher hat schon eigene Daten und eigene Geräteeinstellungen
+        AccountStore(tv).save(listOf(Account("alt", "Alt", SourceType.M3U, m3uUrl = "http://alt")))
+        Library(tv, "alt").toggleFavorite("LIVE:1")
+        tv.openPrefs("settings").edit().putBoolean("matchFrameRate", false).putString("storeTarget", "file:D:/TV").apply()
+
+        // Handy schickt, Fernseher bestätigt
+        val host = io.github.phillhf.iptv.sync.SyncHost(tv, "Fernseher")
+        val link = io.github.phillhf.iptv.sync.SyncLink.parse(host.link.toUri())!!
+        assertEquals(host.link, link)
+        val answer = Thread {
+            while (host.offer == null) Thread.sleep(20)
+            val o = host.offer!!
+            assertEquals("Handy", o.device)
+            io.github.phillhf.iptv.sync.SyncData.import(tv, o.data)
+            o.answer.complete(true)
+        }.apply { start() }
+        assertTrue(io.github.phillhf.iptv.sync.SyncClient.push(phone, link.copy(hosts = listOf("127.0.0.1")), "Handy"))
+        answer.join()
+        host.stop()
+        val tv2 = AppContext(tv.dataDir)
+        assertEquals(listOf("a"), AccountStore(tv2).all().map { it.id })
+        assertEquals("geheim", AccountStore(tv2).all().first().password)
+        assertEquals(listOf("LIVE:7"), Library(tv2, "a").favorites())
+        assertEquals(123_456L, Library(tv2, "a").position("MOVIE:1"))
+        assertEquals(setOf("LIVE:9"), Library(tv2, "a").custom().hiddenStreams)
+        assertTrue(Library(tv2, "alt").favorites().isEmpty())
+        val settings = tv2.openPrefs("settings")
+        assertEquals("VIOLET", settings.getString("theme", null))
+        assertEquals(130, settings.getInt("subtitleSize", 0))
+        assertEquals(false, settings.getBoolean("matchFrameRate", true))
+        assertEquals("file:D:/TV", settings.getString("storeTarget", null))
+
+        // Zweiter Versuch mit demselben Code geht nicht
+        val again = runCatching { io.github.phillhf.iptv.sync.SyncClient.push(phone, link.copy(hosts = listOf("127.0.0.1")), "Handy") }
+        assertTrue(again.isFailure)
+
+        // Andersherum: Handy holt vom Fernseher
+        AccountStore(tv2).save(listOf(Account("b", "Neu", SourceType.M3U, m3uUrl = "http://b")))
+        val host2 = io.github.phillhf.iptv.sync.SyncHost(tv2, "Fernseher")
+        val name = io.github.phillhf.iptv.sync.SyncClient.pull(phone, host2.link.copy(hosts = listOf("127.0.0.1")))
+        host2.stop()
+        assertEquals("Fernseher", name)
+        assertEquals(listOf("b"), AccountStore(AppContext(phone.dataDir)).all().map { it.id })
+        // Falscher Schlüssel
+        val host3 = io.github.phillhf.iptv.sync.SyncHost(tv2, "Fernseher")
+        val wrong = host3.link.copy(hosts = listOf("127.0.0.1"), key = ByteArray(32))
+        assertTrue(runCatching { io.github.phillhf.iptv.sync.SyncClient.pull(phone, wrong) }.isFailure)
+        host3.stop()
     }
 
     @Test

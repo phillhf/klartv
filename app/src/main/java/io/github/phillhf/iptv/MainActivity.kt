@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.phillhf.iptv.sync.SyncLink
 import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.KlarTheme
 
@@ -38,8 +39,14 @@ class MainActivity : ComponentActivity() {
         openFrom(intent, androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java])
     }
 
-    /** Aus einer Erinnerung: den Sender öffnen. */
+    /** Aus einer Erinnerung: den Sender öffnen. Aus der Kamera-App: abgleichen. */
     private fun openFrom(intent: Intent?, vm: AppViewModel) {
+        intent?.data?.toString()?.let { SyncLink.parse(it) }?.let { link ->
+            intent.data = null
+            vm.syncFromLink = true
+            vm.openSync(link)
+            return
+        }
         val channel = intent?.getStringExtra(CHANNEL) ?: return
         val account = intent.getStringExtra(ACCOUNT) ?: return
         intent.removeExtra(CHANNEL)

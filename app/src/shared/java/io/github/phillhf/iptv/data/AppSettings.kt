@@ -27,6 +27,13 @@ object AppSettings {
         p.all.forEach { (k, v) -> if (v != null) state[k] = v }
     }
 
+    /** Nach einem Abgleich: alles neu aus der Datei lesen. */
+    fun reload() {
+        val p = prefs ?: return
+        state.clear()
+        p.all.forEach { (k, v) -> if (v != null) state[k] = v }
+    }
+
     private class Pref<T : Any>(private val default: T) : ReadWriteProperty<AppSettings, T> {
         @Suppress("UNCHECKED_CAST")
         override fun getValue(thisRef: AppSettings, property: KProperty<*>): T = (state[property.name] as? T) ?: default

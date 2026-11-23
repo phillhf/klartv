@@ -204,4 +204,30 @@ class TvTest : DeviceBase() {
         key(KeyEvent.KEYCODE_LAST_CHANNEL)
         waitFor("wieder Sender 3", 10) { p.ui.index == 2 }
     }
+
+    /** QR-Code zeigen und einen Abgleich über das Netz auf demselben Gerät durchspielen. */
+    @Test
+    fun d6_sync() {
+        val vm = openApp()
+        main { vm.openSync() }
+        expectOnScreen("Geräte abgleichen", "Gültig noch")
+        shot("tv_abgleich")
+        main { vm.closeSync() }
+        main { vm.toggleFavorite(vm.readyCatalog(Kind.LIVE)!!.streams.first()) }
+        val favorites = main { vm.favorites }
+        val host = io.github.phillhf.iptv.sync.SyncHost(app, "Fernseher")
+        val link = host.link.copy(hosts = listOf("127.0.0.1"))
+        val answer = Thread {
+            while (host.offer == null) Thread.sleep(20)
+            val o = host.offer!!
+            io.github.phillhf.iptv.sync.SyncData.import(app, o.data)
+            o.answer.complete(true)
+        }.apply { start() }
+        org.junit.Assert.assertTrue(io.github.phillhf.iptv.sync.SyncClient.push(app, link, "Handy"))
+        answer.join()
+        host.stop()
+        main { vm.reloadStored() }
+        waitFor("wieder geladen") { vm.active?.id == "test" && vm.favorites == favorites }
+        main { vm.toggleFavorite(vm.readyCatalog(Kind.LIVE)!!.streams.first()) }
+    }
 }

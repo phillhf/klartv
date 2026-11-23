@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.sqlite)
     implementation(libs.json)
     implementation(libs.smbj)
+    implementation(libs.zxing)
     testImplementation(libs.junit)
 }
 

@@ -19,12 +19,16 @@ import io.github.phillhf.iptv.ui.MultiViewScreen
 import io.github.phillhf.iptv.ui.PinRequest
 import io.github.phillhf.iptv.ui.ReminderPopup
 import io.github.phillhf.iptv.ui.SeriesScreen
+import io.github.phillhf.iptv.ui.SyncScreen
 
 @Composable
 internal fun App(vm: AppViewModel) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-            if (vm.active == null) {
+            BackHandler(enabled = vm.syncOpen) { vm.closeSync() }
+            if (vm.syncOpen) {
+                SyncScreen(vm)
+            } else if (vm.active == null) {
                 AddAccountScreen(vm, onCancel = null)
             } else {
                 BackHandler(enabled = vm.stack.size > 1) { vm.back() }

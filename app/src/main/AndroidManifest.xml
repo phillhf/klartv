@@ -15,6 +15,15 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- QR-Code zum Abgleichen scannen; Fernseher ohne Kamera bleiben im Store -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
     <!-- Server im eigenen Netz, ab Android 17 -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
@@ -46,6 +55,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <!-- QR-Code zum Abgleichen, mit der Kamera-App gescannt -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="klartv" android:host="sync" />
             </intent-filter>
         </activity>
 

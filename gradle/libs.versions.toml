@@ -26,6 +26,9 @@ json = "20260814"
 coroutines = "1.11.0"
 # Netzlaufwerk (SMB) für Aufnahmen
 smbj = "0.15.0"
+# QR-Code zum Abgleichen
+zxing = "3.5.4"
+camerax = "1.7.0"
 roborazzi = "1.79.0"
 
 [libraries]
@@ -67,6 +70,11 @@ jna-platform = { group = "net.java.dev.jna", name = "jna-platform", version.ref 
 sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
+zxing = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

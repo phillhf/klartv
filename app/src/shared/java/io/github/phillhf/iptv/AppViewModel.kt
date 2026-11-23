@@ -41,6 +41,7 @@ import io.github.phillhf.iptv.platform.AppApplication
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.BaseViewModel
 import io.github.phillhf.iptv.platform.openPlayer
+import io.github.phillhf.iptv.sync.SyncLink
 import io.github.phillhf.iptv.transfer.Stores
 import io.github.phillhf.iptv.transfer.Transfer
 import io.github.phillhf.iptv.transfer.Transfers
@@ -143,6 +144,50 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     var custom by mutableStateOf(Custom())
         private set
     private val customView = HashMap<Kind, Triple<Catalog, Custom, Catalog>>()
+
+    /** Geräte abgleichen: offen? und mit welchem Gerät (nach dem Scannen). */
+    var syncOpen by mutableStateOf(false)
+        private set
+    var syncLink by mutableStateOf<SyncLink?>(null)
+
+    fun openSync(link: SyncLink? = null) {
+        syncLink = link
+        syncOpen = true
+    }
+
+    fun closeSync() {
+        if (syncLink != null && !syncFromLink) {
+            syncLink = null
+        } else {
+            syncLink = null
+            syncOpen = false
+        }
+        syncFromLink = false
+    }
+
+    /** Über einen Link aus der Kamera-App gekommen: Zurück schließt dann ganz. */
+    var syncFromLink = false
+
+    /** Nach einem Abgleich: alles neu aus den Dateien lesen. */
+    fun reloadStored() {
+        AppSettings.reload()
+        I18n.init(app)
+        liveFormat = store.liveFormat
+        livePreview = store.livePreview
+        accounts = store.all()
+        val a = accounts.firstOrNull { it.id == store.activeId } ?: accounts.firstOrNull()
+        if (a != null) {
+            activate(a, backendFor(a))
+        } else {
+            jobs.values.forEach { it.cancel() }
+            catalogs.clear()
+            library = null
+            backend = null
+            active = null
+            stack.clear()
+            stack.add(Screen.Home)
+        }
+    }
 
     /** Sender, der geöffnet werden soll, sobald die Liste da ist (aus einer Erinnerung). */
     var pendingChannel by mutableStateOf<String?>(null)

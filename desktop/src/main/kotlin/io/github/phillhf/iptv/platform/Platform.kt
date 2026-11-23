@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -112,6 +113,19 @@ const val canPickFolder = true
 fun pickFolder(): String? {
     val chooser = javax.swing.JFileChooser().apply { fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY }
     return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) chooser.selectedFile.path else null
+}
+
+@Suppress("UNUSED_PARAMETER")
+fun deviceName(context: AppContext): String =
+    runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull() ?: System.getenv("COMPUTERNAME") ?: "PC"
+
+/** Windows zeigt den Code nur, scannen kann es nicht. */
+@Suppress("UNUSED_PARAMETER")
+fun canScan(context: AppContext): Boolean = false
+
+@Composable
+fun QrScanner(onResult: (String) -> Unit, onClose: () -> Unit) {
+    LaunchedEffect(Unit) { onClose() }
 }
 
 @Suppress("UnusedReceiverParameter")

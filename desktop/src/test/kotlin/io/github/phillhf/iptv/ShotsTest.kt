@@ -137,6 +137,9 @@ class ShotsTest {
         shoot(scene, "win_mehrere")
         onUi { vm.back(); vm.open(Screen.AddAccount) }
         shoot(scene, "win_anbieter")
+        onUi { vm.back(); vm.openSync() }
+        shoot(scene, "win_abgleich")
+        onUi { vm.closeSync() }
         onUi { scene.close() }
     }
 

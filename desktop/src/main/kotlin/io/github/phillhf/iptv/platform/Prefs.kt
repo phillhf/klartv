@@ -59,10 +59,24 @@ class Prefs(private val file: File) {
         fun putLong(key: String, value: Long) = set(key, value)
         fun putFloat(key: String, value: Float) = set(key, value)
         fun putBoolean(key: String, value: Boolean) = set(key, value)
+        fun putStringSet(key: String, value: Set<String>?) = set(key, value?.toSet())
         fun remove(key: String) = set(key, null)
+
+        private var wipe = false
+
+        fun clear(): Editor {
+            wipe = true
+            return this
+        }
+
+        fun commit(): Boolean {
+            apply()
+            return true
+        }
 
         fun apply() {
             synchronized(values) {
+                if (wipe) values.clear()
                 changes.forEach { (k, v) -> if (v == null) values.remove(k) else values[k] = v }
                 val o = JSONObject()
                 values.forEach { (k, v) ->

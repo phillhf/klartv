@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -191,6 +192,11 @@ fun SettingsScreen(vm: AppViewModel) {
                 AppSettings.language = it
                 I18n.init(context)
             }
+        }
+
+        Section(t("Geräte abgleichen")) {
+            Dim(t("Anbieter, Favoriten, Verlauf und Einstellungen per QR-Code zwischen Handy, Fernseher und PC übertragen, in beide Richtungen."))
+            FlowButtons { Action(Icons.Filled.QrCode, t("Geräte abgleichen")) { vm.openSync() } }
         }
 
         Section(t("Sender und Gruppen")) {

@@ -1,5 +1,7 @@
 package io.github.phillhf.iptv.ui
 
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.OutlinedButton
 import io.github.phillhf.iptv.t
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,6 +74,10 @@ fun AddAccountScreen(vm: AppViewModel, onCancel: (() -> Unit)?) {
                 t("Trage die Zugangsdaten ein, die du von deinem IPTV-Anbieter bekommen hast. Sie bleiben nur auf diesem Gerät."),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            OutlinedButton(onClick = { vm.openSync() }, modifier = Modifier.focusRing(Pill)) {
+                Icon(Icons.Filled.QrCode, contentDescription = null)
+                Text(t("Vom anderen Gerät übernehmen (QR-Code)"), modifier = Modifier.padding(start = 8.dp))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = type == SourceType.XTREAM,
