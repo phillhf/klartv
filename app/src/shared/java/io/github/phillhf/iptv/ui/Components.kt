@@ -539,6 +539,7 @@ fun CategoryChips(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
     locked: Set<String> = emptySet(),
+    onMenu: ((String) -> Unit)? = null,
 ) {
     LazyRow(
         modifier,
@@ -552,7 +553,8 @@ fun CategoryChips(
                     .focusRing(Pill)
                     .clip(Pill)
                     .background(if (isSelected) Klar.Accent else Klar.SurfaceHigh)
-                    .clickable { onSelect(c.id) }
+                    .rightClick(onMenu?.let { { it(c.id) } })
+                    .combinedClickable(onLongClick = onMenu?.let { { it(c.id) } }) { onSelect(c.id) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(

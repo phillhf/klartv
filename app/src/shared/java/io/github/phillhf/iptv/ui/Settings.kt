@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
 import io.github.phillhf.iptv.EpgState
@@ -142,6 +143,13 @@ fun SettingsScreen(vm: AppViewModel) {
             }
             Text(t("Format für Live-TV (nur Xtream)"))
             Options(listOf("ts" to "MPEG-TS", "m3u8" to "HLS"), vm.liveFormat) { vm.updateLiveFormat(it) }
+            if (!mouseDriven) {
+                SwitchRow(
+                    t("Bildwiederholrate anpassen"),
+                    t("Fernseher: schaltet auf die Bildrate des Senders oder Films um, damit nichts ruckelt. Das Bild ist dabei kurz schwarz."),
+                    AppSettings.matchFrameRate,
+                ) { AppSettings.matchFrameRate = it }
+            }
             SwitchRow(t("Live-Vorschau"), t("Spielt den gewählten Sender in der Senderliste klein ab (TV und Tablet)."), vm.livePreview) { vm.updateLivePreview(it) }
             Text(t("Bevorzugte Tonsprache"))
             Options(languageChoices(), AppSettings.audioLanguage) { AppSettings.audioLanguage = it }
@@ -171,6 +179,24 @@ fun SettingsScreen(vm: AppViewModel) {
                 AppSettings.language = it
                 I18n.init(context)
             }
+        }
+
+        Section(t("Sender und Gruppen")) {
+            Dim(
+                if (mouseDriven) {
+                    t("Rechtsklick auf einen Sender oder eine Gruppe: umbenennen, umsortieren oder ausblenden.")
+                } else {
+                    t("Sender oder Gruppe lange drücken: umbenennen, umsortieren oder ausblenden.")
+                },
+            )
+            val c = vm.custom
+            c.hiddenStreams.forEach { key ->
+                HiddenRow(vm.originalName(key)) { vm.showStream(key) }
+            }
+            c.hiddenGroups.forEach { key ->
+                HiddenRow(t("Gruppe: %1", t(vm.groupName(key)))) { vm.showGroup(key) }
+            }
+            if (!c.isEmpty) FlowButtons { Action(Icons.Filled.Refresh, t("Alles wie beim Anbieter")) { vm.resetCustom() } }
         }
 
         Section(t("Kindersicherung")) {
@@ -210,7 +236,7 @@ fun SettingsScreen(vm: AppViewModel) {
                 ),
             )
             if (mouseDriven) {
-                Dim(t("Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, I kleines Fenster, Esc zurück."))
+                Dim(t("Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück."))
                 Dim(t("Verwendet libVLC (LGPL 2.1), Compose Multiplatform, Coil und SQLite JDBC (Apache 2.0). Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert."))
             } else {
                 Dim(t("Verwendet libVLC (LGPL 2.1), Media3 und Coil (Apache 2.0) und das Google Cast SDK. Daten zu Filmen mit eigenem Schlüssel von TMDB; die App ist nicht von TMDB geprüft oder zertifiziert."))
@@ -277,6 +303,14 @@ private fun PrivacyLink() {
         context.openUrl(url)
     }
     Dim(url)
+}
+
+@Composable
+private fun HiddenRow(name: String, onShow: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(name, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Action(null, t("Wieder zeigen"), onShow)
+    }
 }
 
 @Composable

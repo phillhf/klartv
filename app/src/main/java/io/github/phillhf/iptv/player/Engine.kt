@@ -44,5 +44,8 @@ interface Engine {
         /** [unsupported]: Das Format passt nicht zu dieser Engine, die andere könnte es können. */
         fun onError(message: String, unsupported: Boolean)
         fun onVideoSize(width: Int, height: Int)
+
+        /** Bilder je Sekunde, sobald bekannt. */
+        fun onFrameRate(fps: Float) {}
     }
 }

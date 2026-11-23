@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import io.github.phillhf.iptv.data.Reminder
+import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.player.PlayerHost
 import java.awt.Desktop
 import java.io.File
@@ -84,6 +86,21 @@ fun AppContext.openUrl(url: String) {
     // Nur Webseiten: Adressen kommen zum Teil vom Anbieter
     if (!url.startsWith("https://") && !url.startsWith("http://")) return
     runCatching { Desktop.getDesktop().browse(URI(url)) }
+}
+
+/** Unter Windows schaut eine Uhr alle paar Sekunden nach; das geht nur, solange Klar TV offen ist. */
+@Suppress("UnusedReceiverParameter", "UNUSED_PARAMETER")
+fun AppContext.scheduleReminder(r: Reminder) = ReminderClock.start()
+
+@Suppress("UnusedReceiverParameter", "UNUSED_PARAMETER")
+fun AppContext.cancelReminder(r: Reminder) = Unit
+
+private object ReminderClock {
+    private val timer = javax.swing.Timer(10_000) { Reminders.fireDue() }
+
+    fun start() {
+        if (!timer.isRunning) timer.start()
+    }
 }
 
 @Suppress("UnusedReceiverParameter")

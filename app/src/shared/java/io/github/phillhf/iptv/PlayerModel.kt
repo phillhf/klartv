@@ -18,6 +18,9 @@ enum class PlayerPanel { AUDIO, SUBTITLES, SPEED, SCALE, ENGINE, CHANNELS, SLEEP
 class PlayerUi {
     var items by mutableStateOf<List<PlayItem>>(emptyList())
     var index by mutableIntStateOf(0)
+
+    /** Zuvor gesehener Sender, -1 = keiner. */
+    var previous by mutableIntStateOf(-1)
     var position by mutableLongStateOf(0L)
     var duration by mutableLongStateOf(0L)
     var playing by mutableStateOf(false)
@@ -59,6 +62,13 @@ interface PlayerActions {
     fun seekTo(ms: Long)
     fun step(delta: Int)
     fun jumpTo(index: Int)
+
+    /** Zurück zum zuvor gesehenen Sender und wieder hin. */
+    fun lastChannel() {
+        if (ui.previous in ui.items.indices && ui.previous != ui.index) jumpTo(ui.previous)
+    }
+
+    val ui: PlayerUi
     fun openPanel(panel: PlayerPanel?)
     fun pickAudio(id: String)
     fun pickText(id: String?)

@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -65,6 +67,7 @@ import io.github.phillhf.iptv.data.Catchup
 import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
+import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.Stream
 import io.github.phillhf.iptv.platform.ListScrollbar
 import io.github.phillhf.iptv.platform.LocalAppContext
@@ -301,6 +304,9 @@ private fun Cell(s: Stream, c: GuideCell, now: Long, x: Dp, scroll: ScrollState,
         }
         Row(stick, verticalAlignment = Alignment.CenterVertically) {
             if (replay) Icon(Icons.Filled.Replay, contentDescription = t("Nachschauen möglich"), tint = Klar.Accent, modifier = Modifier.height(16.dp).padding(end = 4.dp))
+            if (Reminders.list.any { it.channel == s.key && it.start == e.start }) {
+                Icon(Icons.Filled.NotificationsActive, contentDescription = t("Erinnerung"), tint = Klar.Gold, modifier = Modifier.height(16.dp).padding(end = 4.dp))
+            }
             Text(
                 e.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge,
                 color = if (e.end <= now && !replay) Klar.TextDim else Klar.Text,
@@ -334,6 +340,21 @@ fun ProgrammeDialog(vm: AppViewModel, s: Stream, e: EpgEntry, onDismiss: () -> U
                 if (Catchup.available(s, e.start, now)) {
                     DialogAction(Icons.Filled.Replay, if (e.end > now) t("Von vorn ansehen") else t("Sendung nachschauen")) {
                         vm.playCatchup(context, s, e) { note = t("Der Anbieter stellt diese Sendung nicht bereit.") }
+                    }
+                }
+                if (e.start > now) {
+                    val reminder = Reminders.find(s.key, e.start)
+                    if (reminder != null) {
+                        DialogAction(Icons.Filled.NotificationsOff, t("Erinnerung löschen")) {
+                            Reminders.remove(reminder)
+                            note = t("Erinnerung gelöscht.")
+                        }
+                    } else {
+                        DialogAction(Icons.Filled.NotificationsActive, t("Erinnern")) {
+                            askNotify()
+                            vm.remind(s, e)
+                            note = t("Klar TV meldet sich eine Minute vor Beginn.")
+                        }
                     }
                 }
                 if (now < e.end) {

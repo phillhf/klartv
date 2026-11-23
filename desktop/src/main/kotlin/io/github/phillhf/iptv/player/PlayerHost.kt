@@ -59,7 +59,7 @@ object PlayerHost {
 
 /** Steuert die Wiedergabe. Verhält sich wie PlayerActivity auf Android. */
 class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlayer.Listener {
-    val ui = PlayerUi()
+    override val ui = PlayerUi()
     val player = VlcPlayer()
     private val scope: CoroutineScope = MainScope()
     private val prefs = AppContext.default.openPrefs("window")
@@ -103,6 +103,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
         wasReady = false
         retries = 0
         ui.items = items
+        ui.previous = -1
         load(index.coerceIn(items.indices))
     }
 
@@ -298,6 +299,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
 
     override fun jumpTo(index: Int) {
         if (index !in ui.items.indices) return
+        if (index != ui.index) ui.previous = ui.index
         retries = 0
         ui.message = null
         ui.panel = null
@@ -410,6 +412,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
                 showMessage(t("Diese Sendung lässt sich nicht von vorn ansehen."), autoHide = true)
             } else {
                 ui.items = listOf(again)
+                ui.previous = -1
                 load(0, 0)
             }
         }
@@ -456,7 +459,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
 
     // ---------- Tastatur und Mausrad ----------
 
-    enum class Command { PLAY, BACK, LEFT, RIGHT, UP, DOWN, FULLSCREEN, MUTE, NEXT, PREVIOUS, RECORD, SUBTITLES, AUDIO, CHANNELS, PIP, OK }
+    enum class Command { PLAY, BACK, LAST, LEFT, RIGHT, UP, DOWN, FULLSCREEN, MUTE, NEXT, PREVIOUS, RECORD, SUBTITLES, AUDIO, CHANNELS, PIP, OK }
 
     /** true, wenn die Taste verbraucht ist. */
     fun command(c: Command): Boolean {
@@ -465,6 +468,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
         when (c) {
             Command.PLAY -> togglePlay()
             Command.BACK -> back()
+            Command.LAST -> lastChannel()
             Command.LEFT -> if (live) openPanel(PlayerPanel.CHANNELS) else touchSeek(false)
             Command.RIGHT -> if (live) ui.item?.let { showInfo(it) } else touchSeek(true)
             Command.UP -> changeVolume(0.05f)

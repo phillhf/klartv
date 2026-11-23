@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
 import io.github.phillhf.iptv.Screen
 import io.github.phillhf.iptv.data.Catalog
+import io.github.phillhf.iptv.data.Category
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.platform.BackHandler
@@ -263,6 +264,8 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
     val list = remember(catalog, current) { catalog.inCategory(current) }
     val item = vm.focused?.takeIf { it.kind == kind } ?: list.firstOrNull()
     val spot = item?.let { spotFor(vm, it) }
+    var groupMenu by remember { mutableStateOf<Category?>(null) }
+    groupMenu?.let { c -> GroupMenu(vm, kind, c, onDismiss = { groupMenu = null }) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val infoHeight = (maxHeight * 0.36f).coerceAtLeast(170.dp)
@@ -276,6 +279,7 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
                 { catalog.inCategory(it).size },
                 Modifier.width(240.dp).fillMaxHeight().background(Klar.Bg.copy(alpha = 0.6f)),
                 locked = catalog.lockedIds,
+                onMenu = { id -> catalog.categories.firstOrNull { it.id == id && id != Catalog.ALL }?.let { groupMenu = it } },
             ) { vm.chooseCategory(kind, it) }
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Crossfade(targetState = spot, animationSpec = tween(250), label = "Info") { s ->
@@ -325,13 +329,18 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
 private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
     val current = vm.lastCategory[kind] ?: Catalog.ALL
     val list = remember(catalog, current) { catalog.inCategory(current) }
+    var groupMenu by remember { mutableStateOf<Category?>(null) }
+    groupMenu?.let { c -> GroupMenu(vm, kind, c, onDismiss = { groupMenu = null }) }
     Column(Modifier.fillMaxSize()) {
         Text(
             if (kind == Kind.MOVIE) t("Filme") else t("Serien"),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp),
         )
-        CategoryChips(catalog.categories, current, { vm.chooseCategory(kind, it) }, locked = catalog.lockedIds)
+        CategoryChips(
+            catalog.categories, current, { vm.chooseCategory(kind, it) }, locked = catalog.lockedIds,
+            onMenu = { id -> catalog.categories.firstOrNull { it.id == id && id != Catalog.ALL }?.let { groupMenu = it } },
+        )
         LazyVerticalGrid(
             GridCells.Adaptive(108.dp),
             Modifier.weight(1f).fillMaxWidth(),

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material.icons.filled.Pause
@@ -189,6 +190,9 @@ private fun Controls(ui: PlayerUi, actions: PlayerActions) {
                             LabelButton(Icons.Filled.FiberManualRecord, if (recording) t("Aufnahme beenden") else t("Aufnehmen"), tint = Klar.Live) { actions.record() }
                         }
                         if (ui.items.size > 1) item { LabelButton(Icons.AutoMirrored.Filled.List, t("Sender")) { actions.openPanel(PlayerPanel.CHANNELS) } }
+                        if (ui.previous in ui.items.indices && ui.previous != ui.index) {
+                            item { LabelButton(Icons.Filled.History, t("Letzter Sender")) { actions.lastChannel() } }
+                        }
                     }
                     item { LabelButton(Icons.Filled.Audiotrack, t("Ton")) { actions.openPanel(PlayerPanel.AUDIO) } }
                     item { LabelButton(Icons.Filled.Subtitles, t("Untertitel")) { actions.openPanel(PlayerPanel.SUBTITLES) } }

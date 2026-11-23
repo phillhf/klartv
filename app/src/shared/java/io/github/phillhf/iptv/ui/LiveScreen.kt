@@ -2,6 +2,7 @@ package io.github.phillhf.iptv.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,6 +98,11 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
     val categories = liveCategories(vm, catalog)
     var selected by remember(current) { mutableStateOf(list.firstOrNull()) }
     var clicked by remember(current) { mutableStateOf(list.firstOrNull()?.key) }
+    var channelMenu by remember { mutableStateOf<Stream?>(null) }
+    var groupMenu by remember { mutableStateOf<Category?>(null) }
+    channelMenu?.let { s -> ChannelMenu(vm, s, list, onDismiss = { channelMenu = null }) }
+    groupMenu?.let { c -> GroupMenu(vm, Kind.LIVE, c, onDismiss = { groupMenu = null }) }
+    val editGroup = { id: String -> categories.firstOrNull { it.id == id && id != Catalog.ALL && id != FAVORITES }?.let { groupMenu = it } }
     val preview = rememberLivePreview()
     val play = { i: Int ->
         preview.stop()
@@ -111,6 +117,7 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
                 { if (it == FAVORITES) vm.favoriteStreams(Kind.LIVE).size else catalog.inCategory(it).size },
                 Modifier.width(230.dp).fillMaxHeight(),
                 locked = catalog.lockedIds,
+                onMenu = { editGroup(it) },
                 header = {
                     LabelButton(Icons.Filled.GridView, t("Mehrere Sender")) {
                         preview.stop()
@@ -128,6 +135,7 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
                         number = i + 1,
                         selected = s.key == selected?.key,
                         onFocused = { selected = s },
+                        onMenu = { channelMenu = s },
                         onClick = {
                             if (mouseDriven && vm.livePreview && clicked != s.key) clicked = s.key else play(i)
                         },
@@ -146,11 +154,11 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
                 RoundButton(Icons.Filled.CalendarViewDay, t("Programm")) { vm.tab = Tab.GUIDE }
                 RoundButton(Icons.Filled.GridView, t("Mehrere Sender")) { vm.open(Screen.MultiView) }
             }
-            CategoryChips(categories, current, { vm.chooseCategory(Kind.LIVE, it) }, locked = catalog.lockedIds)
+            CategoryChips(categories, current, { vm.chooseCategory(Kind.LIVE, it) }, locked = catalog.lockedIds, onMenu = { editGroup(it) })
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 16.dp)) {
                 itemsIndexed(list) { i, s ->
                     LaunchedEffect(s.id) { vm.requestEpg(s) }
-                    ChannelRow(vm, s, i + 1, selected = false, onFocused = {}, onClick = { play(i) })
+                    ChannelRow(vm, s, i + 1, selected = false, onFocused = {}, onMenu = { channelMenu = s }, onClick = { play(i) })
                 }
             }
         }
@@ -158,7 +166,7 @@ private fun LiveView(vm: AppViewModel, catalog: Catalog, wide: Boolean) {
 }
 
 @Composable
-private fun ChannelRow(vm: AppViewModel, stream: Stream, number: Int, selected: Boolean, onFocused: () -> Unit, onClick: () -> Unit) {
+private fun ChannelRow(vm: AppViewModel, stream: Stream, number: Int, selected: Boolean, onFocused: () -> Unit, onMenu: () -> Unit, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     val (now, _) = currentAndNext(vm.nowEpg[stream.id].orEmpty())
     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -169,7 +177,8 @@ private fun ChannelRow(vm: AppViewModel, stream: Stream, number: Int, selected: 
                 .focusRing(shape)
                 .clip(shape)
                 .background(if (selected) Klar.Accent.copy(alpha = 0.10f) else Color.Transparent)
-                .clickable(onClick = onClick)
+                .rightClick(onMenu)
+                .combinedClickable(onLongClick = onMenu, onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -253,6 +262,7 @@ fun CategoryRail(
     count: (String) -> Int,
     modifier: Modifier,
     locked: Set<String> = emptySet(),
+    onMenu: ((String) -> Unit)? = null,
     header: (@Composable () -> Unit)? = null,
     onSelect: (String) -> Unit,
 ) {
@@ -270,7 +280,8 @@ fun CategoryRail(
                     .focusRing(shape)
                     .clip(shape)
                     .background(if (isSelected) Klar.Accent.copy(alpha = 0.16f) else Color.Transparent)
-                    .clickable { onSelect(c.id) }
+                    .rightClick(onMenu?.let { { it(c.id) } })
+                    .combinedClickable(onLongClick = onMenu?.let { { it(c.id) } }) { onSelect(c.id) }
                     .padding(horizontal = 14.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

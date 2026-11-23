@@ -109,6 +109,12 @@ class Library(context: AppContext, accountId: String) {
         prefs.edit().putString("locked", set.joinToString("\n")).apply()
     }
 
+    fun custom(): Custom = Custom.fromJson(prefs.getString("custom", null))
+
+    fun saveCustom(c: Custom) {
+        prefs.edit().putString("custom", c.toJson()).apply()
+    }
+
     fun recent(): List<String> = prefs.getString("recent", "").orEmpty().split('\n').filter { it.isNotBlank() }
 
     fun addRecent(key: String) {

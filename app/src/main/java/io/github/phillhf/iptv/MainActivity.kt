@@ -1,5 +1,6 @@
 package io.github.phillhf.iptv
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
@@ -26,8 +27,28 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         if (savedInstanceState == null) Transfers.resumePending()
         setContent {
-            KlarTheme { App(viewModel()) }
+            val vm: AppViewModel = viewModel()
+            LaunchedEffect(Unit) { openFrom(intent, vm) }
+            KlarTheme { App(vm) }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFrom(intent, androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java])
+    }
+
+    /** Aus einer Erinnerung: den Sender öffnen. */
+    private fun openFrom(intent: Intent?, vm: AppViewModel) {
+        val channel = intent?.getStringExtra(CHANNEL) ?: return
+        val account = intent.getStringExtra(ACCOUNT) ?: return
+        intent.removeExtra(CHANNEL)
+        vm.watchChannel(account, channel)
+    }
+
+    companion object {
+        const val CHANNEL = "reminder_channel"
+        const val ACCOUNT = "reminder_account"
     }
 }
 

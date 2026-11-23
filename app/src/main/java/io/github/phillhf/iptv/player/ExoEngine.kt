@@ -84,6 +84,7 @@ class ExoEngine(context: Context) : Engine {
 
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             if (videoSize.width > 0) listener?.onVideoSize(videoSize.width, videoSize.height)
+            player.videoFormat?.frameRate?.takeIf { it > 0f }?.let { listener?.onFrameRate(it) }
         }
     }
 

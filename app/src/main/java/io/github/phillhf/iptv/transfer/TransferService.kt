@@ -19,6 +19,7 @@ import androidx.core.app.ServiceCompat
 import io.github.phillhf.iptv.MainActivity
 import io.github.phillhf.iptv.R
 import io.github.phillhf.iptv.data.AppSettings
+import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.friendlyError
 import io.github.phillhf.iptv.t
 import java.io.File
@@ -171,6 +172,12 @@ class RecordAlarmReceiver : BroadcastReceiver() {
         AppSettings.init(context)
         Transfers.init(context)
         val id = intent.getStringExtra("id")
-        if (id != null) Transfers.due(id) else Transfers.rearm()
+        if (id != null) {
+            Transfers.due(id)
+        } else {
+            Transfers.rearm()
+            Reminders.init(context)
+            Reminders.rearm()
+        }
     }
 }

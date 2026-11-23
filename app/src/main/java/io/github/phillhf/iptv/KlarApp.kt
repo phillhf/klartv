@@ -2,6 +2,7 @@ package io.github.phillhf.iptv
 
 import android.app.Application
 import io.github.phillhf.iptv.data.AppSettings
+import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.transfer.Transfers
 
 class KlarApp : Application() {
@@ -10,5 +11,6 @@ class KlarApp : Application() {
         AppSettings.init(this)
         I18n.init(this)
         Transfers.init(this)
+        Reminders.init(this)
     }
 }

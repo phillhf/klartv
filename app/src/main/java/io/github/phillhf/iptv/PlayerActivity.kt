@@ -34,6 +34,7 @@ import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.EngineChoice
 import io.github.phillhf.iptv.data.OpenSubtitles
 import io.github.phillhf.iptv.data.friendlyError
+import io.github.phillhf.iptv.data.pickRefreshRate
 import io.github.phillhf.iptv.player.Engine
 import io.github.phillhf.iptv.player.ExoEngine
 import io.github.phillhf.iptv.player.ScaleMode
@@ -50,7 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
-    val ui = PlayerUi()
+    override val ui = PlayerUi()
     private var engine: Engine? = null
     private lateinit var root: FrameLayout
     private val handler = Handler(Looper.getMainLooper())
@@ -148,6 +149,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         resumeAt = 0
         ui.items = all
         ui.index = PlaybackQueue.startIndex.coerceIn(all.indices)
+        ui.previous = -1
         if (started) load(ui.index)
     }
 
@@ -173,6 +175,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         handler.removeCallbacksAndMessages(null)
         epgJob?.cancel()
         dropEngine()
+        resetFrameRate()
         if (ui.inPip) finish()
     }
 
@@ -246,6 +249,22 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
             ui.buffering = false
             bump()
         }
+    }
+
+    /** Fernseher: Anzeige auf eine passende Bildwiederholrate umschalten. */
+    override fun onFrameRate(fps: Float) {
+        if (!AppSettings.matchFrameRate) return
+        val display = (if (Build.VERSION.SDK_INT >= 30) display else null) ?: @Suppress("DEPRECATION") windowManager.defaultDisplay
+        val current = display.mode
+        val modes = display.supportedModes.filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+        val rate = pickRefreshRate(fps, modes.map { it.refreshRate }) ?: return
+        val mode = modes.firstOrNull { it.refreshRate == rate } ?: return
+        if (window.attributes.preferredDisplayModeId == mode.modeId) return
+        window.attributes = window.attributes.also { it.preferredDisplayModeId = mode.modeId }
+    }
+
+    private fun resetFrameRate() {
+        if (window.attributes.preferredDisplayModeId != 0) window.attributes = window.attributes.also { it.preferredDisplayModeId = 0 }
     }
 
     override fun onVideoSize(width: Int, height: Int) {
@@ -384,6 +403,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
 
     override fun jumpTo(index: Int) {
         if (index !in ui.items.indices) return
+        if (index != ui.index) ui.previous = ui.index
         forced = null
         retries = 0
         ui.message = null
@@ -497,6 +517,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
                 showMessage(t("Diese Sendung lässt sich nicht von vorn ansehen."), autoHide = true)
             } else {
                 ui.items = listOf(again)
+                ui.previous = -1
                 forced = null
                 load(0, 0)
             }
@@ -553,6 +574,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
             KeyEvent.KEYCODE_CAPTIONS -> openPanel(PlayerPanel.SUBTITLES)
             KeyEvent.KEYCODE_INFO -> ui.item?.let { showInfo(it) }
             KeyEvent.KEYCODE_GUIDE -> if (live) openPanel(PlayerPanel.CHANNELS)
+            KeyEvent.KEYCODE_LAST_CHANNEL -> lastChannel()
             in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
                 if (!live || ui.panel != null) return false
                 ui.digits = (ui.digits + (code - KeyEvent.KEYCODE_0)).takeLast(5)

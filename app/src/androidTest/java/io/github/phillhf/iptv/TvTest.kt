@@ -171,4 +171,30 @@ class TvTest : DeviceBase() {
         assertEquals("Sternenstaub", main { p.ui.item?.title })
         lib.removeContinue("MOVIE:200")
     }
+
+    @Test
+    fun d5_hideChannelAndLastChannel() {
+        val vm = openApp()
+        main { vm.resetCustom() }
+        main { vm.tab = Tab.LIVE }
+        Thread.sleep(1500)
+        key(KeyEvent.KEYCODE_DPAD_DOWN)
+        key(KeyEvent.KEYCODE_DPAD_RIGHT)
+        holdOk()
+        expectOnScreen("Ausblenden", "Umbenennen")
+        shot("tv_sender_menue")
+        clickOn("Ausblenden")
+        waitFor("ausgeblendet", 10) { vm.readyCatalog(Kind.LIVE)?.byKey?.containsKey("LIVE:100") == false }
+        main { vm.resetCustom() }
+        waitFor("wieder da", 10) { vm.readyCatalog(Kind.LIVE)?.byKey?.containsKey("LIVE:100") == true }
+        // Letzter Sender: hin und zurück
+        val p = play(liveTs, liveHls, PlayItem("LIVE:102", "Süd Drei", "$server/live/demo/demo/102.ts", live = true, streamId = "102"))
+        waitFor("läuft", 40) { p.ui.playing }
+        main { p.jumpTo(2) }
+        waitFor("Sender 3") { p.ui.index == 2 }
+        key(KeyEvent.KEYCODE_LAST_CHANNEL)
+        waitFor("zurück zu Sender 1", 10) { p.ui.index == 0 }
+        key(KeyEvent.KEYCODE_LAST_CHANNEL)
+        waitFor("wieder Sender 3", 10) { p.ui.index == 2 }
+    }
 }

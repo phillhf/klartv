@@ -61,6 +61,9 @@ object AppSettings {
     var subtitleBackground by Pref(50)
 
     var userAgent by Pref("")
+
+    /** Fernseher: Bildwiederholrate an das Video anpassen. */
+    var matchFrameRate by Pref(false)
     var theme by Pref("NIGHT")
     /** Sprache der App, leer = wie das Gerät. */
     var language by Pref("")

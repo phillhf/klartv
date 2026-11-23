@@ -41,6 +41,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.phillhf.iptv.data.AppSettings
+import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.BackStack
 import io.github.phillhf.iptv.platform.Win32
@@ -83,6 +84,8 @@ internal fun runApp() {
     val vm = AppViewModel(context)
     mainViewModel = vm
     Transfers.init(context)
+    Reminders.init(context)
+    Reminders.rearm()
     application {
         val prefs = remember { context.openPrefs("window") }
         val state = rememberWindowState(
@@ -158,6 +161,13 @@ internal fun runApp() {
                         confirmButton = { TextButton(onClick = quit) { Text(t("Trotzdem schließen")) } },
                         dismissButton = { TextButton(onClick = { asking = false }) { Text(t("Abbrechen")) } },
                     )
+                }
+            }
+            // Erinnerung fällig: Fenster nach vorn holen
+            LaunchedEffect(Reminders.due) {
+                if (Reminders.due != null) {
+                    if (state.isMinimized) state.isMinimized = false
+                    window.toFront()
                 }
             }
             val playing = PlayerHost.session?.ui?.playing == true
@@ -275,6 +285,7 @@ private fun handleKey(e: KeyEvent): Boolean {
         Key.U -> Command.SUBTITLES
         Key.T -> Command.AUDIO
         Key.L -> Command.CHANNELS
+        Key.Z -> Command.LAST
         Key.I -> Command.PIP
         Key.Enter, Key.NumPadEnter -> Command.OK
         else -> null

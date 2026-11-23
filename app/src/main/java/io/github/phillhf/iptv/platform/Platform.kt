@@ -19,6 +19,8 @@ import io.github.phillhf.iptv.BuildConfig
 import io.github.phillhf.iptv.LocalNetworkPermission
 import io.github.phillhf.iptv.PlayerActivity
 import io.github.phillhf.iptv.R
+import io.github.phillhf.iptv.ReminderReceiver
+import io.github.phillhf.iptv.data.Reminder
 import java.io.InputStream
 
 // Was der gemeinsame Code vom System braucht. Das Gegenstück für Windows liegt in desktop/.
@@ -48,6 +50,10 @@ fun AppContext.openUrl(url: String) {
 }
 
 fun AppContext.openPlayer() = startActivity(Intent(this, PlayerActivity::class.java))
+
+fun AppContext.scheduleReminder(r: Reminder) = ReminderReceiver.schedule(this, r)
+
+fun AppContext.cancelReminder(r: Reminder) = ReminderReceiver.cancel(this, r)
 
 fun isTv(context: AppContext): Boolean = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 

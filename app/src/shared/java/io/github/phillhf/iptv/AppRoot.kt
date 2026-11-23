@@ -6,14 +6,18 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.platform.BackHandler
+import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.platform.ServerPermission
 import io.github.phillhf.iptv.ui.AddAccountScreen
 import io.github.phillhf.iptv.ui.HomeScreen
 import io.github.phillhf.iptv.ui.MovieScreen
 import io.github.phillhf.iptv.ui.MultiViewScreen
 import io.github.phillhf.iptv.ui.PinRequest
+import io.github.phillhf.iptv.ui.ReminderPopup
 import io.github.phillhf.iptv.ui.SeriesScreen
 
 @Composable
@@ -33,6 +37,10 @@ internal fun App(vm: AppViewModel) {
                 }
             }
             PinRequest(vm)
+            ReminderPopup(vm)
+            val context = LocalAppContext.current
+            val live = vm.readyCatalog(Kind.LIVE)
+            LaunchedEffect(vm.pendingChannel, live) { if (live != null) vm.playPending(context) }
         }
         ServerPermission(vm.active?.let { it.server.ifBlank { it.m3uUrl } })
     }

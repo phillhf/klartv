@@ -73,6 +73,7 @@ class VlcEngine(context: Context) : Engine {
                 MediaPlayer.Event.ESAdded -> if (e.esChangedType == IMedia.Track.Type.Text && !textChosen) player.spuTrack = -1
                 MediaPlayer.Event.Vout -> player.currentVideoTrack?.let { t ->
                     if (t.width > 0) listener?.onVideoSize(t.width, t.height)
+                    if (t.frameRateNum > 0 && t.frameRateDen > 0) listener?.onFrameRate(t.frameRateNum.toFloat() / t.frameRateDen)
                 }
                 MediaPlayer.Event.Paused, MediaPlayer.Event.Stopped -> {
                     playing = false

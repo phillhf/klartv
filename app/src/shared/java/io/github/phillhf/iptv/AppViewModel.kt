@@ -16,6 +16,7 @@ import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.Catchup
 import io.github.phillhf.iptv.data.Category
 import io.github.phillhf.iptv.data.ContinueEntry
+import io.github.phillhf.iptv.data.Custom
 import io.github.phillhf.iptv.data.EpgDb
 import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Episode
@@ -24,6 +25,7 @@ import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Library
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.M3uBackend
+import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.SeriesInfo
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.data.Stream
@@ -31,8 +33,10 @@ import io.github.phillhf.iptv.data.Tmdb
 import io.github.phillhf.iptv.data.VodInfo
 import io.github.phillhf.iptv.data.Xmltv
 import io.github.phillhf.iptv.data.XtreamBackend
+import io.github.phillhf.iptv.data.customized
 import io.github.phillhf.iptv.data.friendlyError
 import io.github.phillhf.iptv.data.looksAdult
+import io.github.phillhf.iptv.data.moveInOrder
 import io.github.phillhf.iptv.platform.AppApplication
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.BaseViewModel
@@ -134,6 +138,14 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     var pinRequest by mutableStateOf<(() -> Unit)?>(null)
     private val visible = HashMap<Kind, Triple<Catalog, Set<String>, Catalog>>()
 
+    /** Eigene Ordnung der Listen (ausgeblendet, umbenannt, umsortiert). */
+    var custom by mutableStateOf(Custom())
+        private set
+    private val customView = HashMap<Kind, Triple<Catalog, Custom, Catalog>>()
+
+    /** Sender, der geöffnet werden soll, sobald die Liste da ist (aus einer Erinnerung). */
+    var pendingChannel by mutableStateOf<String?>(null)
+
     init {
         (accounts.firstOrNull { it.id == store.activeId } ?: accounts.firstOrNull())?.let { activate(it, backendFor(it)) }
     }
@@ -167,7 +179,9 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
             recent = it.recent()
             continueList = it.continueList()
             locked = it.lockedCategories()
+            custom = it.custom()
         }
+        customView.clear()
         tab = Tab.START
         stack.clear()
         stack.add(Screen.Home)
@@ -270,11 +284,93 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
 
     /** Was gerade gezeigt werden darf, also ohne gesperrte Kategorien. */
     fun readyCatalog(kind: Kind): Catalog? {
+        val base = lockedView(kind) ?: return null
+        val c = custom
+        if (c.isEmpty) return base
+        customView[kind]?.let { (from, with, result) -> if (from === base && with == c) return result }
+        return base.customized(kind, c).also { customView[kind] = Triple(base, c, it) }
+    }
+
+    private fun lockedView(kind: Kind): Catalog? {
         val raw = rawCatalog(kind) ?: return null
         if (!AppSettings.hasPin || unlocked) return raw
         val ids = lockedIds(kind, raw)
         visible[kind]?.let { (from, with, result) -> if (from === raw && with == ids) return result }
         return raw.without(ids).also { visible[kind] = Triple(raw, ids, it) }
+    }
+
+    // ---------- Eigene Ordnung ----------
+
+    private fun saveCustom(c: Custom) {
+        custom = c
+        library?.saveCustom(c)
+    }
+
+    fun hideStream(s: Stream) = saveCustom(custom.copy(hiddenStreams = custom.hiddenStreams + s.key))
+
+    fun showStream(key: String) = saveCustom(custom.copy(hiddenStreams = custom.hiddenStreams - key))
+
+    /** Leerer Name stellt den des Anbieters wieder her. */
+    fun renameStream(s: Stream, name: String) {
+        val clean = name.trim()
+        val original = rawCatalog(s.kind)?.byKey?.get(s.key)?.name
+        saveCustom(custom.copy(names = if (clean.isEmpty() || clean == original) custom.names - s.key else custom.names + (s.key to clean)))
+    }
+
+    /** Verschiebt einen Sender in der gerade gezeigten Liste um einen Platz. */
+    fun moveStream(s: Stream, shown: List<Stream>, up: Boolean) {
+        val all = rawCatalog(s.kind)?.streams?.map { it.key }.orEmpty()
+        val order = custom.streamOrder.ifEmpty { all }
+        saveCustom(custom.copy(streamOrder = moveInOrder(order, shown.map { it.key }, s.key, up)))
+    }
+
+    fun hideGroup(kind: Kind, id: String) {
+        if (lastCategory[kind] == id) lastCategory[kind] = Catalog.ALL
+        saveCustom(custom.copy(hiddenGroups = custom.hiddenGroups + "${kind.name}:$id"))
+    }
+
+    fun showGroup(key: String) = saveCustom(custom.copy(hiddenGroups = custom.hiddenGroups - key))
+
+    fun moveGroup(kind: Kind, id: String, up: Boolean) {
+        val shown = readyCatalog(kind)?.categories?.map { it.id }?.filter { it != Catalog.ALL }.orEmpty()
+        val order = custom.groupOrder[kind].orEmpty().ifEmpty { shown }
+        saveCustom(custom.copy(groupOrder = custom.groupOrder + (kind to moveInOrder(order, shown, id, up))))
+    }
+
+    fun resetCustom() = saveCustom(Custom())
+
+    /** Namen fürs Zurückholen in den Einstellungen. */
+    fun originalName(key: String): String {
+        val kind = runCatching { Kind.valueOf(key.substringBefore(':')) }.getOrNull() ?: return key
+        return rawCatalog(kind)?.byKey?.get(key)?.name ?: key
+    }
+
+    fun groupName(key: String): String {
+        val kind = runCatching { Kind.valueOf(key.substringBefore(':')) }.getOrNull() ?: return key
+        val id = key.substringAfter(':')
+        return rawCatalog(kind)?.categories?.firstOrNull { it.id == id }?.name ?: id
+    }
+
+    // ---------- Erinnerungen ----------
+
+    fun remind(s: Stream, e: EpgEntry) {
+        val a = active ?: return
+        Reminders.add(a.id, s, e)
+    }
+
+    fun watchChannel(account: String, key: String) {
+        if (active?.id != account) accounts.firstOrNull { it.id == account }?.let { select(it) }
+        pendingChannel = key
+        ensureLoaded(Kind.LIVE)
+    }
+
+    fun playPending(context: AppContext) {
+        val key = pendingChannel ?: return
+        val live = readyCatalog(Kind.LIVE) ?: return
+        pendingChannel = null
+        val s = live.byKey[key] ?: return
+        val list = live.streams.filter { it.categoryId == s.categoryId }
+        play(context, list.map { it.toPlayItem() }, list.indexOf(s).coerceAtLeast(0))
     }
 
     // ---------- Kindersicherung ----------
@@ -438,7 +534,9 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
 
     val hasEpg: Boolean get() = backend?.hasEpg == true || (epgState as? EpgState.Ready)?.let { it.count > 0 } == true
 
-    private fun epgKey(s: Stream): String = s.epgId?.trim()?.lowercase()?.ifEmpty { null } ?: ("n:" + Xmltv.normalizeName(s.name))
+    /** Mit dem Namen des Anbieters, auch wenn der Nutzer den Sender umbenannt hat. */
+    private fun epgKey(s: Stream): String = s.epgId?.trim()?.lowercase()?.ifEmpty { null }
+        ?: ("n:" + Xmltv.normalizeName(rawCatalog(s.kind)?.byKey?.get(s.key)?.name ?: s.name))
 
     /** Liest den Programmführer des Anbieters ein, wenn er älter als zwölf Stunden ist oder [force]. */
     fun refreshEpg(force: Boolean) {
