@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.jna.platform)
     implementation(libs.sqlite)
     implementation(libs.json)
+    implementation(libs.smbj)
     testImplementation(libs.junit)
 }
 

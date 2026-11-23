@@ -103,6 +103,17 @@ private object ReminderClock {
     }
 }
 
+/** Unter Windows wählt man jeden Ordner selbst, auch verbundene Netzlaufwerke. */
+@Suppress("UNUSED_PARAMETER")
+fun storageChoices(context: AppContext): List<Pair<String, String>> = emptyList()
+
+const val canPickFolder = true
+
+fun pickFolder(): String? {
+    val chooser = javax.swing.JFileChooser().apply { fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY }
+    return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) chooser.selectedFile.path else null
+}
+
 @Suppress("UnusedReceiverParameter")
 fun AppContext.openPlayer() = PlayerHost.open()
 

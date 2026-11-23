@@ -41,6 +41,7 @@ import io.github.phillhf.iptv.platform.AppApplication
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.BaseViewModel
 import io.github.phillhf.iptv.platform.openPlayer
+import io.github.phillhf.iptv.transfer.Stores
 import io.github.phillhf.iptv.transfer.Transfer
 import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.Tab
@@ -698,7 +699,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     fun playTransfer(context: AppContext, x: Transfer) {
         val lib = library ?: return
         val item = PlayItem(
-            key = "FILE:${x.id}", title = x.title, subtitle = x.subtitle, url = java.io.File(x.file).toURI().toASCIIString().replaceFirst("file:/", "file:///"),
+            key = "FILE:${x.id}", title = x.title, subtitle = x.subtitle, url = Stores.playUrl(x.file),
             live = false, image = x.image, local = true,
         )
         playItems(context, lib, listOf(item), 0)

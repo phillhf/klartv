@@ -39,10 +39,8 @@ object Transfers {
             saved.map {
                 when {
                     it.state == TransferState.RUNNING && it.type == TransferType.DOWNLOAD -> it.copy(state = TransferState.QUEUED)
-                    it.active && it.type == TransferType.RECORD -> {
-                        val size = File(it.file).length()
-                        it.copy(state = if (size > 0) TransferState.DONE else TransferState.FAILED, bytes = size, total = size)
-                    }
+                    it.active && it.type == TransferType.RECORD ->
+                        it.copy(state = if (it.bytes > 0) TransferState.DONE else TransferState.FAILED, total = it.bytes)
                     it.state == TransferState.SCHEDULED && it.endAt <= System.currentTimeMillis() -> it.copy(state = TransferState.FAILED, error = "verpasst")
                     else -> it
                 }
@@ -74,7 +72,7 @@ object Transfers {
 
     private fun fileName(title: String, id: String, ext: String): String {
         val clean = title.replace(Regex("[^\\p{L}\\p{N} ._-]"), "").trim().trimEnd('.').take(70).ifEmpty { "Video" }
-        return File(folder(), "$clean-${id.take(8)}.$ext").path
+        return Stores.newLocation(folder(), "$clean-${id.take(8)}.$ext")
     }
 
     fun download(item: PlayItem) {
@@ -134,10 +132,14 @@ object Transfers {
         list.removeAll { it.id == t.id }
         save()
         // Die Datei wird erst gleich geschlossen; danach löschen
-        Timer(1500) {
-            File(t.file).delete()
-            File(t.file + ".part").delete()
-        }.apply { isRepeats = false }.start()
+        thread(name = "loeschen", isDaemon = true) {
+            Thread.sleep(1500)
+            runCatching {
+                val (store, name) = Stores.resolve(t.file)
+                store.delete(name)
+                store.delete("$name.part")
+            }
+        }
     }
 
     private fun add(t: Transfer) {
@@ -187,21 +189,22 @@ object Transfers {
                     update(item.id, persist = false) { it.copy(bytes = bytes, total = total) }
                 }
             }
-            val file = File(item.file)
-            val stopped = { item.type == TransferType.RECORD && file.length() > 0 }
+            val (store, name) = Stores.resolve(item.file)
+            val length = { runCatching { store.size(name) }.getOrDefault(0L) }
+            val stopped = { item.type == TransferType.RECORD && length() > 0 }
             try {
-                if (item.type == TransferType.DOWNLOAD) loader.download(item.url, file) else loader.record(item.url, file, item.endAt)
-                val size = file.length()
+                if (item.type == TransferType.DOWNLOAD) loader.download(item.url, store, name) else loader.record(item.url, store, name, item.endAt)
+                val size = length()
                 update(item.id) {
                     if (size > 0) it.copy(state = TransferState.DONE, bytes = size, total = size) else it.copy(state = TransferState.FAILED, error = "Es kam kein Bild an.")
                 }
             } catch (e: Loader.Cancelled) {
-                val size = file.length()
+                val size = length()
                 update(item.id) {
                     if (stopped()) it.copy(state = TransferState.DONE, bytes = size, total = size) else it.copy(state = TransferState.FAILED, error = "Angehalten")
                 }
             } catch (e: Exception) {
-                val size = file.length()
+                val size = length()
                 update(item.id) {
                     // Eine abgerissene Aufnahme ist immer noch etwas wert
                     if (stopped()) {

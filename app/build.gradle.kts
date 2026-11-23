@@ -133,6 +133,7 @@ dependencies {
     // Senderlogos und Filmplakate
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
+    implementation(libs.smbj)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

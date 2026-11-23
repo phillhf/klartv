@@ -321,5 +321,20 @@
  "Fernseher: schaltet auf die Bildrate des Senders oder Films um, damit nichts ruckelt. Das Bild ist dabei kurz schwarz.": "TV: switches to the frame rate of the channel or movie so nothing stutters. The picture goes black briefly.",
  "Wieder zeigen": "Show again",
  "Letzter Sender": "Last channel",
- "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Keys in the player: space pause, F full screen, M mute, arrows seek and volume, page up/down channel, Z last channel, I small window, Esc back."
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Keys in the player: space pause, F full screen, M mute, arrows seek and volume, page up/down channel, Z last channel, I small window, Esc back.",
+ "Speicherort für Aufnahmen und Downloads": "Storage location for recordings and downloads",
+ "Dieses Gerät": "This device",
+ "Netzlaufwerk (SMB)": "Network drive (SMB)",
+ "Ordner wählen …": "Choose folder …",
+ "Auf USB-Sticks und SD-Karten nutzt Android den Ordner „Android/data“. Beim Deinstallieren von Klar TV wird er gelöscht.": "On USB sticks and SD cards Android uses the folder “Android/data”. It is deleted when Klar TV is uninstalled.",
+ "Zum Beispiel smb://fritz.box/FRITZ.NAS/Aufnahmen oder smb://nas/videos. Die Freigabe muss SMB 2 oder 3 können.": "For example smb://fritz.box/FRITZ.NAS/Recordings or smb://nas/videos. The share must support SMB 2 or 3.",
+ "Adresse der Freigabe": "Share address",
+ "Benutzer (leer = Gast)": "User (empty = guest)",
+ "Speicherort prüfen": "Check storage location",
+ "Prüfe …": "Checking …",
+ "Geht nicht: %1": "Not working: %1",
+ "Speicherort funktioniert.": "Storage location works.",
+ "„%1“ ist keine Ordnerfreigabe.": "“%1” is not a folder share.",
+ "Netzlaufwerk nicht erreichbar.": "Network drive not reachable.",
+ "Schreiben hat nicht geklappt.": "Writing did not work."
 }

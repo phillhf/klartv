@@ -321,5 +321,20 @@
  "Fernseher: schaltet auf die Bildrate des Senders oder Films um, damit nichts ruckelt. Das Bild ist dabei kurz schwarz.": "TV : passe à la fréquence d’image de la chaîne ou du film pour éviter les saccades. L’écran devient brièvement noir.",
  "Wieder zeigen": "Afficher à nouveau",
  "Letzter Sender": "Dernière chaîne",
- "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Touches du lecteur : espace pause, F plein écran, M muet, flèches avance et volume, page haut/bas chaîne, Z dernière chaîne, I petite fenêtre, Échap retour."
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Touches du lecteur : espace pause, F plein écran, M muet, flèches avance et volume, page haut/bas chaîne, Z dernière chaîne, I petite fenêtre, Échap retour.",
+ "Speicherort für Aufnahmen und Downloads": "Emplacement des enregistrements et téléchargements",
+ "Dieses Gerät": "Cet appareil",
+ "Netzlaufwerk (SMB)": "Lecteur réseau (SMB)",
+ "Ordner wählen …": "Choisir un dossier …",
+ "Auf USB-Sticks und SD-Karten nutzt Android den Ordner „Android/data“. Beim Deinstallieren von Klar TV wird er gelöscht.": "Sur les clés USB et cartes SD, Android utilise le dossier « Android/data ». Il est supprimé lors de la désinstallation de Klar TV.",
+ "Zum Beispiel smb://fritz.box/FRITZ.NAS/Aufnahmen oder smb://nas/videos. Die Freigabe muss SMB 2 oder 3 können.": "Par exemple smb://fritz.box/FRITZ.NAS/Enregistrements ou smb://nas/videos. Le partage doit gérer SMB 2 ou 3.",
+ "Adresse der Freigabe": "Adresse du partage",
+ "Benutzer (leer = Gast)": "Utilisateur (vide = invité)",
+ "Speicherort prüfen": "Vérifier l’emplacement",
+ "Prüfe …": "Vérification …",
+ "Geht nicht: %1": "Ne fonctionne pas : %1",
+ "Speicherort funktioniert.": "L’emplacement fonctionne.",
+ "„%1“ ist keine Ordnerfreigabe.": "« %1 » n’est pas un partage de dossier.",
+ "Netzlaufwerk nicht erreichbar.": "Lecteur réseau injoignable.",
+ "Schreiben hat nicht geklappt.": "L’écriture a échoué."
 }

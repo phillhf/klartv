@@ -24,6 +24,8 @@ jna = "5.19.1"
 sqlite = "3.54.1.0"
 json = "20260814"
 coroutines = "1.11.0"
+# Netzlaufwerk (SMB) für Aufnahmen
+smbj = "0.15.0"
 roborazzi = "1.79.0"
 
 [libraries]
@@ -64,6 +66,7 @@ jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 jna-platform = { group = "net.java.dev.jna", name = "jna-platform", version.ref = "jna" }
 sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
 json = { group = "org.json", name = "json", version.ref = "json" }
+smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

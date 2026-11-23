@@ -321,5 +321,20 @@
  "Fernseher: schaltet auf die Bildrate des Senders oder Films um, damit nichts ruckelt. Das Bild ist dabei kurz schwarz.": "TV: passa alla frequenza del canale o del film così nulla scatta. L’immagine diventa nera per un attimo.",
  "Wieder zeigen": "Mostra di nuovo",
  "Letzter Sender": "Ultimo canale",
- "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Tasti nel lettore: spazio pausa, F schermo intero, M muto, frecce avanzamento e volume, pag su/giù canale, Z ultimo canale, I finestra piccola, Esc indietro."
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Tasti nel lettore: spazio pausa, F schermo intero, M muto, frecce avanzamento e volume, pag su/giù canale, Z ultimo canale, I finestra piccola, Esc indietro.",
+ "Speicherort für Aufnahmen und Downloads": "Posizione di registrazioni e download",
+ "Dieses Gerät": "Questo dispositivo",
+ "Netzlaufwerk (SMB)": "Unità di rete (SMB)",
+ "Ordner wählen …": "Scegli cartella …",
+ "Auf USB-Sticks und SD-Karten nutzt Android den Ordner „Android/data“. Beim Deinstallieren von Klar TV wird er gelöscht.": "Su chiavette USB e schede SD Android usa la cartella «Android/data». Viene eliminata disinstallando Klar TV.",
+ "Zum Beispiel smb://fritz.box/FRITZ.NAS/Aufnahmen oder smb://nas/videos. Die Freigabe muss SMB 2 oder 3 können.": "Ad esempio smb://fritz.box/FRITZ.NAS/Registrazioni o smb://nas/videos. La condivisione deve supportare SMB 2 o 3.",
+ "Adresse der Freigabe": "Indirizzo della condivisione",
+ "Benutzer (leer = Gast)": "Utente (vuoto = ospite)",
+ "Speicherort prüfen": "Verifica posizione",
+ "Prüfe …": "Verifica …",
+ "Geht nicht: %1": "Non funziona: %1",
+ "Speicherort funktioniert.": "La posizione funziona.",
+ "„%1“ ist keine Ordnerfreigabe.": "«%1» non è una cartella condivisa.",
+ "Netzlaufwerk nicht erreichbar.": "Unità di rete non raggiungibile.",
+ "Schreiben hat nicht geklappt.": "Scrittura non riuscita."
 }

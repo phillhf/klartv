@@ -321,5 +321,20 @@
  "Fernseher: schaltet auf die Bildrate des Senders oder Films um, damit nichts ruckelt. Das Bild ist dabei kurz schwarz.": "TV: cambia a la frecuencia del canal o la película para que nada vaya a tirones. La imagen se pone negra un momento.",
  "Wieder zeigen": "Mostrar de nuevo",
  "Letzter Sender": "Último canal",
- "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Teclas del reproductor: espacio pausa, F pantalla completa, M silencio, flechas avance y volumen, Re Pág/Av Pág canal, Z último canal, I ventana pequeña, Esc volver."
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Teclas del reproductor: espacio pausa, F pantalla completa, M silencio, flechas avance y volumen, Re Pág/Av Pág canal, Z último canal, I ventana pequeña, Esc volver.",
+ "Speicherort für Aufnahmen und Downloads": "Ubicación de grabaciones y descargas",
+ "Dieses Gerät": "Este dispositivo",
+ "Netzlaufwerk (SMB)": "Unidad de red (SMB)",
+ "Ordner wählen …": "Elegir carpeta …",
+ "Auf USB-Sticks und SD-Karten nutzt Android den Ordner „Android/data“. Beim Deinstallieren von Klar TV wird er gelöscht.": "En memorias USB y tarjetas SD, Android usa la carpeta «Android/data». Se borra al desinstalar Klar TV.",
+ "Zum Beispiel smb://fritz.box/FRITZ.NAS/Aufnahmen oder smb://nas/videos. Die Freigabe muss SMB 2 oder 3 können.": "Por ejemplo smb://fritz.box/FRITZ.NAS/Grabaciones o smb://nas/videos. El recurso debe admitir SMB 2 o 3.",
+ "Adresse der Freigabe": "Dirección del recurso compartido",
+ "Benutzer (leer = Gast)": "Usuario (vacío = invitado)",
+ "Speicherort prüfen": "Comprobar ubicación",
+ "Prüfe …": "Comprobando …",
+ "Geht nicht: %1": "No funciona: %1",
+ "Speicherort funktioniert.": "La ubicación funciona.",
+ "„%1“ ist keine Ordnerfreigabe.": "«%1» no es una carpeta compartida.",
+ "Netzlaufwerk nicht erreichbar.": "Unidad de red no disponible.",
+ "Schreiben hat nicht geklappt.": "No se pudo escribir."
 }

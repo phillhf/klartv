@@ -55,6 +55,19 @@ fun AppContext.scheduleReminder(r: Reminder) = ReminderReceiver.schedule(this, r
 
 fun AppContext.cancelReminder(r: Reminder) = ReminderReceiver.cancel(this, r)
 
+/** USB-Sticks und SD-Karten: Android erlaubt dort ohne Nachfrage nur den Ordner der App. */
+fun storageChoices(context: AppContext): List<Pair<String, String>> {
+    val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
+    return context.getExternalFilesDirs(android.os.Environment.DIRECTORY_MOVIES).drop(1).filterNotNull().map { dir ->
+        val label = runCatching { sm?.getStorageVolume(dir)?.getDescription(context) }.getOrNull() ?: dir.path
+        "file:" + java.io.File(dir, "KlarTV").path to label
+    }
+}
+
+const val canPickFolder = false
+
+fun pickFolder(): String? = null
+
 fun isTv(context: AppContext): Boolean = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
 
 fun isKeyRepeat(event: KeyEvent): Boolean = event.nativeKeyEvent.repeatCount > 0

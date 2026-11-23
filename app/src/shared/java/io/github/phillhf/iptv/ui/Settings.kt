@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,11 +69,19 @@ import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.platform.appVersion
+import io.github.phillhf.iptv.platform.canPickFolder
 import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.platform.openUrl
+import io.github.phillhf.iptv.platform.pickFolder
+import io.github.phillhf.iptv.platform.storageChoices
 import io.github.phillhf.iptv.t
+import io.github.phillhf.iptv.transfer.Stores
+import io.github.phillhf.iptv.transfer.Transfers
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
@@ -155,6 +165,8 @@ fun SettingsScreen(vm: AppViewModel) {
             Options(languageChoices(), AppSettings.audioLanguage) { AppSettings.audioLanguage = it }
             TextSetting(t("Eigene Player-Kennung (User-Agent), meist leer lassen"), AppSettings.userAgent) { AppSettings.userAgent = it.trim() }
         }
+
+        Section(t("Speicherort für Aufnahmen und Downloads")) { StorageSettings() }
 
         Section(t("Untertitel")) {
             SwitchRow(t("Untertitel einschalten"), t("Wählt beim Start die bevorzugte Sprache."), AppSettings.subtitlesOn) { AppSettings.subtitlesOn = it }
@@ -303,6 +315,44 @@ private fun PrivacyLink() {
         context.openUrl(url)
     }
     Dim(url)
+}
+
+@Composable
+private fun StorageSettings() {
+    val context = LocalAppContext.current
+    val scope = rememberCoroutineScope()
+    var result by remember { mutableStateOf<String?>(null) }
+    val target = AppSettings.storeTarget
+    val choices = buildList {
+        add("" to t("Dieses Gerät"))
+        addAll(storageChoices(context))
+        if (target.startsWith("file:") && none { it.first == target }) add(target to target.removePrefix("file:"))
+        add("smb" to t("Netzlaufwerk (SMB)"))
+    }
+    Options(choices, target) {
+        AppSettings.storeTarget = it
+        result = null
+    }
+    if (canPickFolder) FlowButtons { Action(Icons.Filled.FolderOpen, t("Ordner wählen …")) { pickFolder()?.let { AppSettings.storeTarget = "file:$it" } } }
+    if (target.startsWith("file:") && !mouseDriven) {
+        Dim(t("Auf USB-Sticks und SD-Karten nutzt Android den Ordner „Android/data“. Beim Deinstallieren von Klar TV wird er gelöscht."))
+    }
+    if (target == "smb") {
+        Dim(t("Zum Beispiel smb://fritz.box/FRITZ.NAS/Aufnahmen oder smb://nas/videos. Die Freigabe muss SMB 2 oder 3 können."))
+        TextSetting(t("Adresse der Freigabe"), AppSettings.smbPath) { AppSettings.smbPath = it.trim() }
+        TextSetting(t("Benutzer (leer = Gast)"), AppSettings.smbUser) { AppSettings.smbUser = it.trim() }
+        TextSetting(t("Passwort"), AppSettings.smbPassword, secret = true) { AppSettings.smbPassword = it }
+    }
+    FlowButtons {
+        Action(Icons.Filled.Refresh, t("Speicherort prüfen")) {
+            result = t("Prüfe …")
+            scope.launch {
+                val problem = withContext(Dispatchers.IO) { Stores.check(Transfers.folder()) }
+                result = problem?.let { t("Geht nicht: %1", it) } ?: t("Speicherort funktioniert.")
+            }
+        }
+    }
+    result?.let { Dim(it) }
 }
 
 @Composable

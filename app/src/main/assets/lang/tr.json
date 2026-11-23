@@ -321,5 +321,20 @@
  "Fernseher: schaltet auf die Bildrate des Senders oder Films um, damit nichts ruckelt. Das Bild ist dabei kurz schwarz.": "TV: takılma olmaması için kanalın veya filmin kare hızına geçer. Görüntü kısa süre kararır.",
  "Wieder zeigen": "Tekrar göster",
  "Letzter Sender": "Son kanal",
- "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Oynatıcı tuşları: boşluk duraklat, F tam ekran, M sessiz, oklar sarma ve ses, Page Up/Down kanal, Z son kanal, I küçük pencere, Esc geri."
+ "Tasten im Player: Leertaste Pause, F Vollbild, M Ton aus, Pfeile spulen und Lautstärke, Bild auf/ab Sender, Z letzter Sender, I kleines Fenster, Esc zurück.": "Oynatıcı tuşları: boşluk duraklat, F tam ekran, M sessiz, oklar sarma ve ses, Page Up/Down kanal, Z son kanal, I küçük pencere, Esc geri.",
+ "Speicherort für Aufnahmen und Downloads": "Kayıtlar ve indirmeler için konum",
+ "Dieses Gerät": "Bu cihaz",
+ "Netzlaufwerk (SMB)": "Ağ sürücüsü (SMB)",
+ "Ordner wählen …": "Klasör seç …",
+ "Auf USB-Sticks und SD-Karten nutzt Android den Ordner „Android/data“. Beim Deinstallieren von Klar TV wird er gelöscht.": "USB bellek ve SD kartlarda Android “Android/data” klasörünü kullanır. Klar TV kaldırılınca silinir.",
+ "Zum Beispiel smb://fritz.box/FRITZ.NAS/Aufnahmen oder smb://nas/videos. Die Freigabe muss SMB 2 oder 3 können.": "Örneğin smb://fritz.box/FRITZ.NAS/Kayitlar veya smb://nas/videos. Paylaşım SMB 2 veya 3 desteklemeli.",
+ "Adresse der Freigabe": "Paylaşım adresi",
+ "Benutzer (leer = Gast)": "Kullanıcı (boş = misafir)",
+ "Speicherort prüfen": "Konumu denetle",
+ "Prüfe …": "Denetleniyor …",
+ "Geht nicht: %1": "Çalışmıyor: %1",
+ "Speicherort funktioniert.": "Konum çalışıyor.",
+ "„%1“ ist keine Ordnerfreigabe.": "“%1” bir klasör paylaşımı değil.",
+ "Netzlaufwerk nicht erreichbar.": "Ağ sürücüsüne ulaşılamıyor.",
+ "Schreiben hat nicht geklappt.": "Yazma başarısız oldu."
 }

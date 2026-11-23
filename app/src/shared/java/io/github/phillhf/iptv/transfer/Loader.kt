@@ -3,10 +3,7 @@ package io.github.phillhf.iptv.transfer
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.data.Http
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-
-import java.io.RandomAccessFile
 import java.net.URL
 
 /** Lädt Dateien und schneidet Live-Streams mit. Ohne Android-Abhängigkeit, damit es sich testen lässt. */
@@ -15,33 +12,42 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
 
     /** Bei so wenig freiem Platz wird abgebrochen. */
     private val reserve = 300L * 1024 * 1024
+    private var lastSpaceCheck = 0L
 
     /** Lädt nach [target], setzt einen abgebrochenen Versuch fort. */
-    fun download(url: String, target: File, pause: (Long) -> Unit = { Thread.sleep(it) }) {
-        val part = File(target.path + ".part")
+    fun download(url: String, target: File, pause: (Long) -> Unit = { Thread.sleep(it) }) =
+        download(url, FolderStore(target.absoluteFile.parentFile), target.name, pause)
+
+    /** Lädt nach [name] im [store], setzt einen abgebrochenen Versuch fort. */
+    fun download(url: String, store: Store, name: String, pause: (Long) -> Unit = { Thread.sleep(it) }) {
+        val part = "$name.part"
         var attempt = 0
         while (true) {
-            val before = part.length()
+            val before = store.size(part)
             try {
-                downloadOnce(url, part)
+                downloadOnce(url, store, part)
                 break
             } catch (e: Cancelled) {
                 throw e
             } catch (e: IOException) {
                 if (e is Fatal) throw e
                 // Solange es vorangeht, zählt ein Abbruch nicht als Fehlversuch
-                attempt = if (part.length() > before) 1 else attempt + 1
+                attempt = if (runCatching { store.size(part) }.getOrDefault(before) > before) 1 else attempt + 1
                 if (attempt >= 6) throw e
                 pause(2_000L * attempt)
             }
         }
-        if (!part.renameTo(target)) throw Fatal(t("Datei konnte nicht gespeichert werden."))
+        try {
+            store.rename(part, name)
+        } catch (e: IOException) {
+            throw Fatal(t("Datei konnte nicht gespeichert werden."))
+        }
     }
 
     class Fatal(message: String) : IOException(message)
 
-    private fun downloadOnce(url: String, part: File) {
-        val have = part.length()
+    private fun downloadOnce(url: String, store: Store, part: String) {
+        val have = store.size(part)
         val conn = Http.open(url, if (have > 0) mapOf("Range" to "bytes=$have-") else emptyMap())
         try {
             val type = conn.contentType.orEmpty()
@@ -51,23 +57,17 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
             var bytes = if (resumed) have else 0L
             val length = conn.contentLengthLong
             val total = if (length > 0) bytes + length else 0L
-            RandomAccessFile(part, "rw").use { out ->
-                out.setLength(bytes)
-                out.seek(bytes)
+            checkSpace(store, force = true)
+            store.output(part, append = resumed).use { out ->
                 conn.inputStream.use { input ->
                     val buffer = ByteArray(128 * 1024)
-                    var sinceCheck = 0L
                     while (true) {
                         if (isCancelled()) throw Cancelled()
                         val n = input.read(buffer)
                         if (n < 0) break
                         out.write(buffer, 0, n)
                         bytes += n
-                        sinceCheck += n
-                        if (sinceCheck > 32L * 1024 * 1024) {
-                            sinceCheck = 0
-                            checkSpace(part)
-                        }
+                        checkSpace(store)
                         onProgress(bytes, total)
                     }
                 }
@@ -79,30 +79,38 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
         }
     }
 
-    private fun checkSpace(file: File) {
-        val free = file.absoluteFile.parentFile?.usableSpace ?: return
+    /** Höchstens einmal pro Minute nachsehen; beim Netzlaufwerk kostet das eine Anfrage. */
+    private fun checkSpace(store: Store, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastSpaceCheck < 60_000) return
+        lastSpaceCheck = now
+        val free = store.free()
         if (free in 1 until reserve) throw Fatal(t("Der Speicher ist fast voll."))
     }
 
     /** Nimmt auf, bis [until] erreicht ist oder abgebrochen wird. Verbindet bei Aussetzern neu. */
-    fun record(url: String, target: File, until: Long, clock: () -> Long = { System.currentTimeMillis() }, pause: (Long) -> Unit = { Thread.sleep(it) }): Long {
-        var bytes = target.length()
-        FileOutputStream(target, true).use { out ->
+    fun record(url: String, target: File, until: Long, clock: () -> Long = { System.currentTimeMillis() }, pause: (Long) -> Unit = { Thread.sleep(it) }): Long =
+        record(url, FolderStore(target.absoluteFile.parentFile), target.name, until, clock, pause)
+
+    fun record(url: String, store: Store, name: String, until: Long, clock: () -> Long = { System.currentTimeMillis() }, pause: (Long) -> Unit = { Thread.sleep(it) }): Long {
+        var bytes = store.size(name)
+        checkSpace(store, force = true)
+        store.output(name, append = true).use { out ->
             val sink: (ByteArray, Int) -> Unit = { b, n ->
                 out.write(b, 0, n)
                 bytes += n
                 onProgress(bytes, 0)
             }
             if (url.substringBefore('?').endsWith(".m3u8", ignoreCase = true)) {
-                recordHls(url, target, until, clock, pause, sink)
+                recordHls(url, store, until, clock, pause, sink)
             } else {
-                recordStream(url, target, until, clock, pause, sink)
+                recordStream(url, store, until, clock, pause, sink)
             }
         }
         return bytes
     }
 
-    private fun recordStream(url: String, target: File, until: Long, clock: () -> Long, pause: (Long) -> Unit, sink: (ByteArray, Int) -> Unit) {
+    private fun recordStream(url: String, store: Store, until: Long, clock: () -> Long, pause: (Long) -> Unit, sink: (ByteArray, Int) -> Unit) {
         var lastData = clock()
         while (clock() < until && !isCancelled()) {
             try {
@@ -121,7 +129,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
                 } finally {
                     conn.disconnect()
                 }
-                checkSpace(target)
+                checkSpace(store)
             } catch (e: Fatal) {
                 throw e
             } catch (e: IOException) {
@@ -131,7 +139,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
         }
     }
 
-    private fun recordHls(url: String, target: File, until: Long, clock: () -> Long, pause: (Long) -> Unit, sink: (ByteArray, Int) -> Unit) {
+    private fun recordHls(url: String, store: Store, until: Long, clock: () -> Long, pause: (Long) -> Unit, sink: (ByteArray, Int) -> Unit) {
         val media = resolveVariant(url)
         var next = -1L
         var lastData = clock()
@@ -150,7 +158,7 @@ class Loader(private val isCancelled: () -> Boolean, private val onProgress: (by
                     next = number + 1
                     lastData = clock()
                 }
-                checkSpace(target)
+                checkSpace(store)
                 if (playlist.ended) return
             } catch (e: Fatal) {
                 throw e

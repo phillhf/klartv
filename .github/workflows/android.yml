@@ -26,6 +26,17 @@ jobs:
       # Prüft auch die Prüfsumme der gradle-wrapper.jar
       - uses: gradle/actions/setup-gradle@v5
 
+      # Freigabe im Netz für den Test der Aufnahmen auf ein Netzlaufwerk
+      - name: Samba-Freigabe
+        run: |
+          sudo apt-get install -y -qq samba > /dev/null
+          sudo mkdir -p /srv/klartv && sudo chmod 777 /srv/klartv
+          sudo useradd -M -s /usr/sbin/nologin klartv || true
+          printf 'test123\ntest123\n' | sudo smbpasswd -a -s klartv
+          printf '[klartv]\n  path = /srv/klartv\n  read only = no\n  valid users = klartv\n  force user = runner\n' | sudo tee -a /etc/samba/smb.conf > /dev/null
+          sudo systemctl restart smbd
+          echo "KLARTV_SMB=smb://127.0.0.1/klartv|klartv|test123" >> "$GITHUB_ENV"
+
       # Alle Tests; die Screenshot-Tests speichern dabei die Bildschirme als PNG
       - name: Tests und Screenshots
         run: ./gradlew recordRoborazziMobileDebug

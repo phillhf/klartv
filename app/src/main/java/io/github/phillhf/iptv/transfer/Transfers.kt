@@ -78,7 +78,7 @@ object Transfers {
 
     private fun fileName(title: String, id: String, ext: String): String {
         val clean = title.replace(Regex("[^\\p{L}\\p{N} ._-]"), "").trim().take(70).ifEmpty { "Video" }
-        return File(folder(), "$clean-${id.take(8)}.$ext").path
+        return Stores.newLocation(folder(), "$clean-${id.take(8)}.$ext")
     }
 
     fun download(item: PlayItem) {
@@ -136,10 +136,15 @@ object Transfers {
         alarms()?.cancel(alarmIntent(t.id))
         list.removeAll { it.id == t.id }
         save()
-        // Der Dienst schließt die Datei erst gleich; danach löschen
+        // Der Dienst schließt die Datei erst gleich; danach löschen, beim Netzlaufwerk nicht im Hauptthread
         main.postDelayed({
-            File(t.file).delete()
-            File(t.file + ".part").delete()
+            kotlin.concurrent.thread(name = "loeschen") {
+                runCatching {
+                    val (store, name) = Stores.resolve(t.file)
+                    store.delete(name)
+                    store.delete("$name.part")
+                }
+            }
         }, 1500)
     }
 

@@ -22,7 +22,6 @@ import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.friendlyError
 import io.github.phillhf.iptv.t
-import java.io.File
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
@@ -111,10 +110,11 @@ class TransferService : Service() {
                     Transfers.update(item.id, persist = false) { it.copy(bytes = bytes, total = total) }
                 }
             }
-            val file = File(item.file)
+            val (store, name) = Stores.resolve(item.file)
+            val length = { runCatching { store.size(name) }.getOrDefault(0L) }
             try {
-                if (item.type == TransferType.DOWNLOAD) loader.download(item.url, file) else loader.record(item.url, file, item.endAt)
-                val size = file.length()
+                if (item.type == TransferType.DOWNLOAD) loader.download(item.url, store, name) else loader.record(item.url, store, name, item.endAt)
+                val size = length()
                 Transfers.update(item.id) {
                     if (size > 0) {
                         it.copy(state = TransferState.DONE, bytes = size, total = size)
@@ -125,7 +125,7 @@ class TransferService : Service() {
             } catch (e: Loader.Cancelled) {
                 Transfers.update(item.id) { it.copy(state = TransferState.FAILED, error = "Angehalten") }
             } catch (e: Exception) {
-                val size = file.length()
+                val size = length()
                 Transfers.update(item.id) {
                     // Eine abgerissene Aufnahme ist immer noch etwas wert
                     if (item.type == TransferType.RECORD && size > 0) {

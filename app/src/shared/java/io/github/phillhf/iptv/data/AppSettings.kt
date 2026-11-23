@@ -62,6 +62,12 @@ object AppSettings {
 
     var userAgent by Pref("")
 
+    /** Wohin Aufnahmen und Downloads gehen: leer = Gerät, „file:Pfad“ = Ordner oder USB-Stick, „smb“ = Netzlaufwerk. */
+    var storeTarget by Pref("")
+    var smbPath by Pref("")
+    var smbUser by Pref("")
+    var smbPassword by Pref("")
+
     /** Fernseher: Bildwiederholrate an das Video anpassen. */
     var matchFrameRate by Pref(false)
     var theme by Pref("NIGHT")
