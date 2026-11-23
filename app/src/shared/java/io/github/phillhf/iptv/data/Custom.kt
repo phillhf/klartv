@@ -34,9 +34,9 @@ data class Custom(
             val order = o.optJSONObject("groupOrder")
             Custom(
                 hiddenStreams = strings(o.optJSONArray("hidden")).toSet(),
-                names = names?.keySet()?.associateWith { names.getString(it) }.orEmpty(),
+                names = names?.keys()?.asSequence()?.toList()?.associateWith { names.getString(it) }.orEmpty(),
                 hiddenGroups = strings(o.optJSONArray("hiddenGroups")).toSet(),
-                groupOrder = order?.keySet()?.mapNotNull { k ->
+                groupOrder = order?.keys()?.asSequence()?.toList()?.mapNotNull { k ->
                     runCatching { Kind.valueOf(k) }.getOrNull()?.let { it to strings(order.optJSONArray(k)) }
                 }?.toMap().orEmpty(),
                 streamOrder = strings(o.optJSONArray("order")),
