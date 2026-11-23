@@ -38,14 +38,6 @@ class CustomTest {
     }
 
     @Test
-    fun jsonRoundTrip() {
-        val c = Custom(setOf("LIVE:1"), mapOf("LIVE:2" to "Ä \"x\""), setOf("MOVIE:9"), mapOf(Kind.SERIES to listOf("3", "1")), listOf("LIVE:2"))
-        assertEquals(c, Custom.fromJson(c.toJson()))
-        assertEquals(Custom(), Custom.fromJson("kaputt"))
-        assertEquals(Custom(), Custom.fromJson(null))
-    }
-
-    @Test
     fun refreshRates() {
         val tv = listOf(23.976f, 24f, 25f, 29.97f, 30f, 50f, 59.94f, 60f)
         assertEquals(25f, pickRefreshRate(25f, tv))

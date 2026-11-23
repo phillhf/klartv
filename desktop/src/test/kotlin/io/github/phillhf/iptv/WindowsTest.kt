@@ -75,6 +75,15 @@ class WindowsTest {
         assertTrue(File(file.path + ".alt").exists())
     }
 
+    // Unter Android geht das nur mit Robolectric
+    @Test
+    fun customJsonRoundTrip() {
+        val c = io.github.phillhf.iptv.data.Custom(setOf("LIVE:1"), mapOf("LIVE:2" to "Ä \"x\""), setOf("MOVIE:9"), mapOf(io.github.phillhf.iptv.data.Kind.SERIES to listOf("3", "1")), listOf("LIVE:2"))
+        assertEquals(c, io.github.phillhf.iptv.data.Custom.fromJson(c.toJson()))
+        assertEquals(io.github.phillhf.iptv.data.Custom(), io.github.phillhf.iptv.data.Custom.fromJson("kaputt"))
+        assertEquals(io.github.phillhf.iptv.data.Custom(), io.github.phillhf.iptv.data.Custom.fromJson(null))
+    }
+
     @Test
     fun accountsAndLibrary() {
         val a = Account("x", "Mein Anbieter", SourceType.XTREAM, "http://a.example", "u", "pw")
