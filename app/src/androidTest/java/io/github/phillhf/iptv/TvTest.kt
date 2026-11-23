@@ -191,9 +191,9 @@ class TvTest : DeviceBase() {
         expectOnScreen("Ausblenden", "Umbenennen")
         shot("tv_sender_menue")
         clickOn("Ausblenden")
-        waitFor("ausgeblendet", 10) { vm.readyCatalog(Kind.LIVE)?.byKey?.containsKey("LIVE:100") == false }
+        waitFor("ausgeblendet", 10) { vm.custom.hiddenStreams.size == 1 && vm.readyCatalog(Kind.LIVE)?.byKey?.containsKey(vm.custom.hiddenStreams.first()) == false }
         main { vm.resetCustom() }
-        waitFor("wieder da", 10) { vm.readyCatalog(Kind.LIVE)?.byKey?.containsKey("LIVE:100") == true }
+        waitFor("wieder da", 10) { vm.custom.isEmpty && vm.readyCatalog(Kind.LIVE)?.streams?.size == 4 }
         // Letzter Sender: hin und zurück
         val p = play(liveTs, liveHls, PlayItem("LIVE:102", "Süd Drei", "$server/live/demo/demo/102.ts", live = true, streamId = "102"))
         waitFor("läuft", 40) { p.ui.playing }
