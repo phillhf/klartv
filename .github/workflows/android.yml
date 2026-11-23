@@ -42,7 +42,7 @@ jobs:
         run: ./gradlew recordRoborazziMobileDebug
 
       - name: Testbericht hochladen
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: testbericht
