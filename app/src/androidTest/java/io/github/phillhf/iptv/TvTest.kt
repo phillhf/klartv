@@ -228,6 +228,8 @@ class TvTest : DeviceBase() {
         host.stop()
         main { vm.reloadStored() }
         waitFor("wieder geladen") { vm.active?.id == "test" && vm.favorites == favorites }
+        main { Kind.entries.forEach { vm.ensureLoaded(it) } }
+        waitFor("Sender da") { vm.readyCatalog(Kind.LIVE) != null }
         main { vm.toggleFavorite(vm.readyCatalog(Kind.LIVE)!!.streams.first()) }
     }
 }

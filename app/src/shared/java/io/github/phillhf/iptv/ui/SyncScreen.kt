@@ -120,7 +120,7 @@ private fun Host(vm: AppViewModel) {
         return
     }
     Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(260.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(14.dp)) {
+        Box(Modifier.size(220.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(14.dp)) {
             if (left > 0 && host.done == null) QrCode(host.link.toUri(), Modifier.fillMaxSize())
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
