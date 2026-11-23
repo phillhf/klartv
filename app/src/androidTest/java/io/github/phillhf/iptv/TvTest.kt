@@ -181,6 +181,13 @@ class TvTest : DeviceBase() {
         key(KeyEvent.KEYCODE_DPAD_DOWN)
         key(KeyEvent.KEYCODE_DPAD_RIGHT)
         holdOk()
+        // Steht der Fokus noch auf einer Gruppe, kommt erst deren Menü; dann einen Schritt nach rechts zum Sender
+        if (onScreen().any { it.contains("Gruppe ausblenden") }) {
+            shot("tv_gruppe_menue")
+            key(KeyEvent.KEYCODE_BACK)
+            key(KeyEvent.KEYCODE_DPAD_RIGHT)
+            holdOk()
+        }
         expectOnScreen("Ausblenden", "Umbenennen")
         shot("tv_sender_menue")
         clickOn("Ausblenden")
