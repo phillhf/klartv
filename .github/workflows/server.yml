@@ -79,6 +79,14 @@ jobs:
           if (Test-Path 'C:\Test\Klar TV Server\KlarTV-Server.exe') { throw 'Nicht deinstalliert' }
           if (Get-NetFirewallRule -DisplayName 'Klar TV Server' -ErrorAction SilentlyContinue) { throw 'Firewall-Regel nicht entfernt' }
 
+      # Protokolle des Dienstes in den Arbeitsordner, sonst lädt sie upload-artifact nicht
+      - name: Protokolle einsammeln
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force server/build/dienst-logs | Out-Null
+          Copy-Item "$env:ProgramData\Klar TV Server\logs\*" server/build/dienst-logs -ErrorAction SilentlyContinue
+
       - name: Testbericht hochladen
         if: always()
         uses: actions/upload-artifact@v6
@@ -86,7 +94,7 @@ jobs:
           name: server-bericht
           path: |
             server/build/reports/tests/
-            C:/ProgramData/Klar TV Server/logs/
+            server/build/dienst-logs/
           retention-days: 5
           if-no-files-found: ignore
 
