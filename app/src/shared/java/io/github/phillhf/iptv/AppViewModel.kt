@@ -145,6 +145,12 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         private set
     private val customView = HashMap<Kind, Triple<Catalog, Custom, Catalog>>()
 
+    // Vor init: activate() braucht sie schon
+    /** Ersatzcover, wenn das des Anbieters fehlt oder nicht lädt. null = es gibt keins. */
+    val covers = mutableStateMapOf<String, String?>()
+    private val coverStage = HashMap<String, Int>()
+    private val coverLimit = Semaphore(3)
+
     /** Geräte abgleichen: offen? und mit welchem Gerät (nach dem Scannen). */
     var syncOpen by mutableStateOf(false)
         private set
@@ -401,11 +407,6 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     }
 
     // ---------- Cover ----------
-
-    /** Ersatzcover, wenn das des Anbieters fehlt oder nicht lädt. null = es gibt keins. */
-    val covers = mutableStateMapOf<String, String?>()
-    private val coverStage = HashMap<String, Int>()
-    private val coverLimit = Semaphore(3)
 
     /** Bild für die Kachel: erst das des Anbieters, dann ein gefundener Ersatz. */
     fun cover(s: Stream): String? = if (s.key in covers) covers[s.key] else s.logo?.takeIf { it.isNotBlank() }
