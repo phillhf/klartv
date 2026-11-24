@@ -11,7 +11,10 @@ fun installImageLoader() {
     val client = OkHttpClient.Builder()
         .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().header("User-Agent", Http.USER_AGENT).build()) }
         .build()
-    SingletonImageLoader.setSafe { context ->
-        ImageLoader.Builder(context).components { add(OkHttpNetworkFetcherFactory(callFactory = { client })) }.build()
+    // Schon angelegt (nur in Tests möglich): dann bleibt der vorhandene
+    runCatching {
+        SingletonImageLoader.setSafe { context ->
+            ImageLoader.Builder(context).components { add(OkHttpNetworkFetcherFactory(callFactory = { client })) }.build()
+        }
     }
 }
