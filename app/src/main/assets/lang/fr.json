@@ -370,5 +370,9 @@
  "Stand von dort hierher holen": "Récupérer les données de là-bas",
  "Stand von „%1“ holen?": "Récupérer les données de « %1 » ?",
  "Holen": "Récupérer",
- "Kamera auf den Code am anderen Gerät richten": "Pointez l’appareil photo vers le code de l’autre appareil"
+ "Kamera auf den Code am anderen Gerät richten": "Pointez l’appareil photo vers le code de l’autre appareil",
+ "Schlüssel ungültig": "Clé invalide",
+ "Prüfe Verbindung …": "Vérification de la connexion …",
+ "Verbunden": "Connecté",
+ "Nicht verbunden: %1": "Non connecté : %1"
 }

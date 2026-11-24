@@ -370,5 +370,9 @@
  "Stand von dort hierher holen": "Traer los datos de allí aquí",
  "Stand von „%1“ holen?": "¿Traer los datos de «%1»?",
  "Holen": "Traer",
- "Kamera auf den Code am anderen Gerät richten": "Apunta la cámara al código del otro dispositivo"
+ "Kamera auf den Code am anderen Gerät richten": "Apunta la cámara al código del otro dispositivo",
+ "Schlüssel ungültig": "Clave no válida",
+ "Prüfe Verbindung …": "Comprobando conexión …",
+ "Verbunden": "Conectado",
+ "Nicht verbunden: %1": "No conectado: %1"
 }

@@ -370,5 +370,9 @@
  "Stand von dort hierher holen": "Verileri oradan buraya getir",
  "Stand von „%1“ holen?": "“%1” verileri getirilsin mi?",
  "Holen": "Getir",
- "Kamera auf den Code am anderen Gerät richten": "Kamerayı diğer cihazdaki koda tutun"
+ "Kamera auf den Code am anderen Gerät richten": "Kamerayı diğer cihazdaki koda tutun",
+ "Schlüssel ungültig": "Geçersiz anahtar",
+ "Prüfe Verbindung …": "Bağlantı denetleniyor …",
+ "Verbunden": "Bağlandı",
+ "Nicht verbunden: %1": "Bağlı değil: %1"
 }

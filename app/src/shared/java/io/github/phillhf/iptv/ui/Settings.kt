@@ -67,7 +67,9 @@ import io.github.phillhf.iptv.data.Account
 import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.EngineChoice
 import io.github.phillhf.iptv.data.Kind
+import io.github.phillhf.iptv.data.OpenSubtitles
 import io.github.phillhf.iptv.data.SourceType
+import io.github.phillhf.iptv.data.Tmdb
 import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.platform.appVersion
 import io.github.phillhf.iptv.platform.canPickFolder
@@ -242,7 +244,9 @@ fun SettingsScreen(vm: AppViewModel) {
         Section(t("Zusatzdienste")) {
             Dim(t("Freiwillig und nur mit deinem eigenen kostenlosen Schlüssel. Dann sendet die App den Titel eines Films oder einer Serie an den Dienst."))
             TextSetting(t("TMDB-Schlüssel (Bilder der Schauspieler, Trailer)"), AppSettings.tmdbKey, secret = true) { AppSettings.tmdbKey = it.trim() }
+            KeyStatus(AppSettings.tmdbKey) { Tmdb.check() }
             TextSetting(t("OpenSubtitles-Schlüssel (Untertitelsuche)"), AppSettings.openSubtitlesKey, secret = true) { AppSettings.openSubtitlesKey = it.trim() }
+            KeyStatus(AppSettings.openSubtitlesKey) { OpenSubtitles.check() }
         }
 
         Section(t("Über die App")) {
@@ -359,6 +363,24 @@ private fun StorageSettings() {
         }
     }
     result?.let { Dim(it) }
+}
+
+/** Klein unter einem Schlüssel: grün verbunden, rot nicht verbunden. Prüft bei jeder Änderung neu. */
+@Composable
+private fun KeyStatus(key: String, check: () -> String?) {
+    if (key.isBlank()) return
+    var state by remember(key) { mutableStateOf<String?>(null) }
+    var checked by remember(key) { mutableStateOf(false) }
+    LaunchedEffect(key) {
+        state = withContext(Dispatchers.IO) { check() }
+        checked = true
+    }
+    val (color, text) = when {
+        !checked -> Klar.TextDim to t("Prüfe Verbindung …")
+        state == null -> Color(0xFF4ADE80) to t("Verbunden")
+        else -> MaterialTheme.colorScheme.error to t("Nicht verbunden: %1", state)
+    }
+    Text("● $text", color = color, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp))
 }
 
 @Composable

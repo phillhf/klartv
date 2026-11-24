@@ -149,6 +149,20 @@ class WindowsTest {
         host3.stop()
     }
 
+    /** Echte Anfrage an TMDB und OpenSubtitles: Ein falscher Schlüssel muss als ungültig erkannt werden. */
+    @Test
+    fun keyCheckRejectsWrongKeys() {
+        AppSettings.tmdbKey = "0123456789abcdef0123456789abcdef"
+        AppSettings.openSubtitlesKey = "falsch"
+        val tmdb = io.github.phillhf.iptv.data.Tmdb.check()
+        val subs = io.github.phillhf.iptv.data.OpenSubtitles.check()
+        println("TMDB: $tmdb, OpenSubtitles: $subs")
+        assertEquals("Schlüssel ungültig", tmdb)
+        assertTrue(subs != null)
+        AppSettings.tmdbKey = ""
+        AppSettings.openSubtitlesKey = ""
+    }
+
     @Test
     fun accountsAndLibrary() {
         val a = Account("x", "Mein Anbieter", SourceType.XTREAM, "http://a.example", "u", "pw")

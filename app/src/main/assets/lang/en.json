@@ -370,5 +370,9 @@
  "Stand von dort hierher holen": "Get data from there to here",
  "Stand von „%1“ holen?": "Get data from “%1”?",
  "Holen": "Get",
- "Kamera auf den Code am anderen Gerät richten": "Point the camera at the code on the other device"
+ "Kamera auf den Code am anderen Gerät richten": "Point the camera at the code on the other device",
+ "Schlüssel ungültig": "Invalid key",
+ "Prüfe Verbindung …": "Checking connection …",
+ "Verbunden": "Connected",
+ "Nicht verbunden: %1": "Not connected: %1"
 }

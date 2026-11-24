@@ -370,5 +370,9 @@
  "Stand von dort hierher holen": "Prendi i dati da lì a qui",
  "Stand von „%1“ holen?": "Prendere i dati di «%1»?",
  "Holen": "Prendi",
- "Kamera auf den Code am anderen Gerät richten": "Inquadra il codice sull’altro dispositivo"
+ "Kamera auf den Code am anderen Gerät richten": "Inquadra il codice sull’altro dispositivo",
+ "Schlüssel ungültig": "Chiave non valida",
+ "Prüfe Verbindung …": "Verifica connessione …",
+ "Verbunden": "Connesso",
+ "Nicht verbunden: %1": "Non connesso: %1"
 }

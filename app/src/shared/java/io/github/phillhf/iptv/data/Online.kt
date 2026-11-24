@@ -15,6 +15,17 @@ fun searchTitle(title: String): String = title
     .replace(Regex("\\s+"), " ")
     .trim()
 
+/** Führt eine Probeanfrage aus und übersetzt das Ergebnis für die Anzeige unter dem Schlüssel. */
+private fun checkKey(request: () -> Any): String? = try {
+    request()
+    null
+} catch (e: IOException) {
+    val m = e.message.orEmpty()
+    if (m.contains("401") || m.contains("403")) t("Schlüssel ungültig") else friendlyError(e)
+} catch (e: Exception) {
+    friendlyError(e)
+}
+
 /** Untertitelsuche mit dem eigenen API-Schlüssel des Nutzers. Ohne Schlüssel findet keine Anfrage statt. */
 object OpenSubtitles {
     data class Hit(val fileId: Long, val name: String, val language: String, val downloads: Int)
@@ -26,6 +37,9 @@ object OpenSubtitles {
     }
 
     private fun headers() = mapOf("Api-Key" to key(), "User-Agent" to "KlarTV v1", "Accept" to "application/json")
+
+    /** Prüft den Schlüssel, ohne das Tageslimit zu belasten. null = verbunden, sonst der Grund. */
+    fun check(): String? = checkKey { Http.get("$BASE/subtitles?languages=en&query=matrix", headers()) }
 
     fun search(title: String, language: String): List<Hit> {
         val episode = Regex("S(\\d+)\\s*E(\\d+)", RegexOption.IGNORE_CASE).find(title)
@@ -91,6 +105,9 @@ object Tmdb {
         val query = all.entries.joinToString("&") { "${it.key}=${queryPart(it.value)}" }
         return JSONObject(Http.get("$BASE$path?$query", if (bearer) mapOf("Authorization" to "Bearer $key") else emptyMap()))
     }
+
+    /** Prüft den Schlüssel. null = verbunden, sonst der Grund. */
+    fun check(): String? = checkKey { get("/configuration") }
 
     fun details(title: String, year: String?, tmdbId: String?, series: Boolean, language: String): Details? {
         if (AppSettings.tmdbKey.isBlank()) return null
