@@ -118,6 +118,22 @@ object Tmdb {
         )
     }
 
+    /** Plakat zu einem Titel, wenn der Anbieter keins hat. */
+    fun poster(title: String, year: String?, series: Boolean, language: String): String? {
+        if (AppSettings.tmdbKey.isBlank()) return null
+        val type = if (series) "tv" else "movie"
+        val name = searchTitle(title.substringBefore(" – S"))
+        if (name.isBlank()) return null
+        fun search(withYear: Boolean): String? {
+            val params = hashMapOf("query" to name, "language" to language)
+            if (withYear && year != null && year.length == 4) params[if (series) "first_air_date_year" else "year"] = year
+            val hits = get("/search/$type", params).optJSONArray("results") ?: return null
+            return (0 until hits.length()).mapNotNull { hits.optJSONObject(it)?.optStringOrNull("poster_path") }.firstOrNull()
+        }
+        val path = search(true) ?: if (year != null) search(false) else null
+        return path?.let { "$IMAGES/w342$it" }
+    }
+
     private fun find(type: String, title: String, year: String?): Long? {
         val params = HashMap<String, String>()
         params["query"] = title

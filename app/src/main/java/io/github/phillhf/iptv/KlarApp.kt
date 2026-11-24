@@ -4,6 +4,7 @@ import android.app.Application
 import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.transfer.Transfers
+import io.github.phillhf.iptv.ui.installImageLoader
 
 class KlarApp : Application() {
     override fun onCreate() {
@@ -12,5 +13,6 @@ class KlarApp : Application() {
         I18n.init(this)
         Transfers.init(this)
         Reminders.init(this)
+        installImageLoader()
     }
 }

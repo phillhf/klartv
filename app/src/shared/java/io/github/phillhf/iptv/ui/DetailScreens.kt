@@ -242,13 +242,13 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 600.dp
-        Backdrop(backdrop ?: info?.cover ?: stream.logo, isCover = backdrop == null)
+        Backdrop(backdrop ?: info?.cover ?: vm.cover(stream), isCover = backdrop == null)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
             item { TitleBar("", onBack = { vm.back() }) }
             item {
                 DetailHeader(
                     wide = wide,
-                    poster = info?.cover ?: stream.logo,
+                    poster = info?.cover?.takeIf { it.isNotBlank() } ?: vm.cover(stream),
                     title = stream.name,
                     meta = metaLine(info?.year ?: stream.year, info?.genre, info?.duration, (info?.rating ?: stream.rating)?.let { "★ $it" }),
                     plot = info?.plot ?: stream.plot ?: more?.plot,
@@ -300,7 +300,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 600.dp
-        Backdrop(backdrop ?: info?.cover ?: stream.logo, isCover = backdrop == null)
+        Backdrop(backdrop ?: info?.cover ?: vm.cover(stream), isCover = backdrop == null)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
             item { TitleBar("", onBack = { vm.back() }) }
             val seasons = info?.seasons?.keys?.toList().orEmpty()
@@ -309,7 +309,7 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
             item {
                 DetailHeader(
                     wide = wide,
-                    poster = info?.cover ?: stream.logo,
+                    poster = info?.cover?.takeIf { it.isNotBlank() } ?: vm.cover(stream),
                     title = stream.name,
                     meta = metaLine(
                         info?.year ?: stream.year,

@@ -232,7 +232,8 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                         )
                         ShelfStyle.POSTER -> PosterCard(
                             title = s.name,
-                            image = s.logo,
+                            image = vm.cover(s),
+                            onImageError = { vm.coverFailed(s, vm.cover(s)) },
                             rating = s.rating,
                             progress = vm.progress(s.key),
                             modifier = focusHere.width(if (wide) 124.dp else 112.dp),

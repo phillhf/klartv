@@ -226,7 +226,10 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
             continueList = it.continueList()
             locked = it.lockedCategories()
             custom = it.custom()
+            covers.clear()
+            covers.putAll(it.covers())
         }
+        coverStage.clear()
         customView.clear()
         tab = Tab.START
         stack.clear()
@@ -395,6 +398,58 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         val kind = runCatching { Kind.valueOf(key.substringBefore(':')) }.getOrNull() ?: return key
         val id = key.substringAfter(':')
         return rawCatalog(kind)?.categories?.firstOrNull { it.id == id }?.name ?: id
+    }
+
+    // ---------- Cover ----------
+
+    /** Ersatzcover, wenn das des Anbieters fehlt oder nicht lädt. null = es gibt keins. */
+    val covers = mutableStateMapOf<String, String?>()
+    private val coverStage = HashMap<String, Int>()
+    private val coverLimit = Semaphore(3)
+
+    /** Bild für die Kachel: erst das des Anbieters, dann ein gefundener Ersatz. */
+    fun cover(s: Stream): String? = if (s.key in covers) covers[s.key] else s.logo?.takeIf { it.isNotBlank() }
+
+    /**
+     * Das gezeigte Bild lädt nicht oder fehlt: der Reihe nach Szenenbild, Cover aus den Details beim Anbieter
+     * und zuletzt TMDB versuchen (nur mit eigenem Schlüssel).
+     */
+    fun coverFailed(s: Stream, failed: String?) {
+        val current = cover(s)
+        if (failed != current) return
+        val stage = coverStage[s.key] ?: 0
+        if (stage < 0 || stage >= 3) return
+        coverStage[s.key] = -1
+        viewModelScope.launch {
+            val tried = setOfNotNull(s.logo, current)
+            var next: String? = null
+            var st = stage
+            while (next == null && st < 3) {
+                st++
+                next = runCatching {
+                    when (st) {
+                        1 -> s.backdrop
+                        2 -> coverLimit.withPermit {
+                            if (s.kind == Kind.MOVIE) {
+                                vodInfo(s)?.let { it.cover ?: it.backdrop }
+                            } else {
+                                (seriesInfo(s) as? Load.Ready<SeriesInfo>)?.value?.let { it.cover ?: it.backdrop }
+                            }
+                        }
+                        else -> coverLimit.withPermit {
+                            withContext(Dispatchers.IO) {
+                                Tmdb.poster(s.name, s.year, s.kind == Kind.SERIES, AppSettings.language.ifEmpty { "de" })
+                            }
+                        }
+                    }
+                }.getOrNull()?.takeIf { it.isNotBlank() && it !in tried }
+            }
+            coverStage[s.key] = st
+            covers[s.key] = next
+            if (next != null && st >= 2) {
+                library?.let { lib -> lib.saveCovers(lib.covers() + (s.key to next)) }
+            }
+        }
     }
 
     // ---------- Erinnerungen ----------

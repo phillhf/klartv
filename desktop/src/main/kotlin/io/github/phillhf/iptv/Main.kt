@@ -55,6 +55,7 @@ import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.Klar
 import io.github.phillhf.iptv.ui.KlarTheme
 import io.github.phillhf.iptv.ui.PlayerScreen
+import io.github.phillhf.iptv.ui.installImageLoader
 import java.awt.GraphicsEnvironment
 import kotlinx.coroutines.delay
 import java.awt.Dimension
@@ -85,6 +86,7 @@ internal fun runApp() {
     mainViewModel = vm
     Transfers.init(context)
     Reminders.init(context)
+    installImageLoader()
     Reminders.rearm()
     application {
         val prefs = remember { context.openPrefs("window") }

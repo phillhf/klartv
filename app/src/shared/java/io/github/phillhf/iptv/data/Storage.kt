@@ -109,6 +109,18 @@ class Library(context: AppContext, accountId: String) {
         prefs.edit().putString("locked", set.joinToString("\n")).apply()
     }
 
+    /** Ersatzcover, die schon gefunden wurden: Schlüssel → Bildadresse. */
+    fun covers(): Map<String, String> = runCatching {
+        val o = JSONObject(prefs.getString("covers", "{}") ?: "{}")
+        o.keys().asSequence().toList().associateWith { o.getString(it) }
+    }.getOrDefault(emptyMap())
+
+    fun saveCovers(map: Map<String, String>) {
+        val o = JSONObject()
+        map.entries.toList().takeLast(5000).forEach { (k, v) -> o.put(k, v) }
+        prefs.edit().putString("covers", o.toString()).apply()
+    }
+
     fun custom(): Custom = Custom.fromJson(prefs.getString("custom", null))
 
     fun saveCustom(c: Custom) {

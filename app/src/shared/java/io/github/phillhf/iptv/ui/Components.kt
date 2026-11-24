@@ -261,13 +261,19 @@ fun PosterCard(
     progress: Float = 0f,
     showTitle: Boolean = true,
     onFocused: (() -> Unit)? = null,
+    onImageError: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
+    // Kein Bild: gleich nach Ersatz fragen
+    if (onImageError != null) LaunchedEffect(image) { if (image.isNullOrBlank()) onImageError() }
     Column(modifier) {
         FocusCard(onClick, Modifier.fillMaxWidth().aspectRatio(2f / 3f), onFocused = onFocused) {
             ImageFallback(title)
             if (!image.isNullOrBlank()) {
-                AsyncImage(model = image, contentDescription = title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                AsyncImage(
+                    model = image, contentDescription = title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                    onError = { onImageError?.invoke() },
+                )
             }
             if (!rating.isNullOrBlank()) Badge("★ $rating", Modifier.align(Alignment.TopEnd).padding(6.dp), textColor = Klar.Gold)
             CardProgress(progress)

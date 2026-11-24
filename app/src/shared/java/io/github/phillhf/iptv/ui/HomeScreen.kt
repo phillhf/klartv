@@ -306,12 +306,14 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
                         verticalArrangement = Arrangement.spacedBy(18.dp),
                     ) {
                         items(list) { s ->
+                            val image = vm.cover(s)
                             PosterCard(
                                 title = s.name,
-                                image = s.logo,
+                                image = image,
                                 rating = s.rating,
                                 progress = vm.progress(s.key),
                                 onFocused = { vm.focus(s) },
+                                onImageError = { vm.coverFailed(s, image) },
                             ) {
                                 vm.focus(s)
                                 vm.open(openScreen(kind, s))
@@ -349,7 +351,8 @@ private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             items(list) { s ->
-                PosterCard(title = s.name, image = s.logo, rating = s.rating, progress = vm.progress(s.key)) {
+                val image = vm.cover(s)
+                PosterCard(title = s.name, image = image, rating = s.rating, progress = vm.progress(s.key), onImageError = { vm.coverFailed(s, image) }) {
                     vm.focus(s)
                     vm.open(openScreen(kind, s))
                 }
