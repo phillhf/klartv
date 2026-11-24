@@ -1,0 +1,24 @@
+Der Klar TV Server enthält folgende Software Dritter
+====================================================
+
+FFmpeg 9.1 (Build von gyan.dev, "essentials")    GPL 3
+  Unverändert, als eigenes Programm aufgerufen (app\resources\tools\ffmpeg.exe und ffprobe.exe).
+  Wandelt Ton und bei Bedarf Bild der Streams für den Browser um.
+  Quelltext: https://ffmpeg.org/download.html  Build: https://www.gyan.dev/ffmpeg/builds/
+  Lizenz: app\resources\tools\FFMPEG-LICENSE.txt
+
+WinSW 2.14.0                                      MIT
+  Unverändert, startet den Server als Windows-Dienst (KlarTV-Server-Dienst.exe).
+  Quelltext: https://github.com/winsw/winsw
+
+mpegts.js 1.8.0 (xqq)                             Apache 2.0
+  Spielt die Streams im Browser ab.
+
+Kotlin, Compose Runtime (JetBrains)               Apache 2.0
+JNA                                               Apache 2.0 oder LGPL 2.1
+SQLite JDBC (Xerial) / SQLite                     Apache 2.0 / gemeinfrei
+JSON-java (org.json)                              gemeinfrei
+ZXing                                             Apache 2.0
+Eclipse Temurin / OpenJDK                         GPL 2 mit Classpath-Ausnahme
+
+Lizenztext Apache 2.0: https://www.apache.org/licenses/LICENSE-2.0

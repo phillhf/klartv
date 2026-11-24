@@ -1,0 +1,99 @@
+name: Windows-Server
+
+# Baut den Klar TV Server, testet ihn mit echtem FFmpeg, erzeugt das Setup
+# und prüft auf einem frischen Windows: Dienst läuft, Weboberfläche antwortet, Deinstallation räumt auf.
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'jvm/**', 'app/src/shared/**', 'app/src/main/assets/**', 'app/build.gradle.kts', 'gradle/**', '.github/workflows/server.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Tests mit echtem FFmpeg
+        shell: bash
+        run: ./gradlew -p server test
+
+      - name: Programm und Setup bauen
+        shell: bash
+        run: |
+          ./gradlew -p server createDistributable
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          [ -f "$ISCC" ] || choco install innosetup -y --no-progress > /dev/null
+          MSYS_NO_PATHCONV=1 "$ISCC" "/DAppVersion=$VERSION" server/installer/KlarTV-Server.iss
+
+      - name: Setup installieren, Dienst und Weboberfläche prüfen, deinstallieren
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem server/build/setup/*.exe | Select-Object -First 1
+          $p = Start-Process $setup.FullName '/VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Test\Klar TV Server"' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Setup: $($p.ExitCode)" }
+          $svc = Get-Service KlarTVServer
+          if ($svc.StartType -ne 'Automatic') { throw "Starttyp: $($svc.StartType)" }
+          $ok = $false
+          for ($i = 0; $i -lt 40 -and -not $ok; $i++) {
+            Start-Sleep 3
+            try { $r = Invoke-RestMethod http://localhost:8095/api/session; $ok = $true } catch { }
+          }
+          if (-not $ok) { Get-Content "$env:ProgramData\Klar TV Server\logs\*" -ErrorAction SilentlyContinue; throw 'Weboberfläche antwortet nicht' }
+          if (-not $r.setupNeeded) { throw 'Unerwarteter Zustand' }
+          $page = Invoke-WebRequest http://localhost:8095/ -UseBasicParsing
+          if ($page.Content -notmatch 'app.js') { throw 'Seite fehlt' }
+          # Ersteinrichtung von hier aus, wie zu Hause
+          $body = '{"user":"test","password":"geheim12345"}'
+          $res = Invoke-WebRequest http://localhost:8095/api/setup -Method Post -Body $body -ContentType 'application/json' -Headers @{ 'X-Klar' = '1' } -SessionVariable s -UseBasicParsing
+          if ($res.StatusCode -ne 200) { throw 'Einrichtung fehlgeschlagen' }
+          $st = Invoke-RestMethod http://localhost:8095/api/state -WebSession $s
+          if (-not $st.ffmpeg) { throw 'FFmpeg fehlt im Setup' }
+          # Über den Tunnel keine zweite Einrichtung, ohne Anmeldung nichts
+          try { Invoke-WebRequest http://localhost:8095/api/state -UseBasicParsing; throw 'Ohne Anmeldung erreichbar' } catch { if ($_.Exception.Response.StatusCode.value__ -ne 401) { throw } }
+          # Daten nur für Administratoren und das System
+          $acl = (Get-Acl "$env:ProgramData\Klar TV Server").Access | ForEach-Object { $_.IdentityReference.Value }
+          if ($acl -match 'Users|Benutzer|Everyone|Jeder') { throw "Datenordner zu offen: $acl" }
+          if (-not (Get-NetFirewallRule -DisplayName 'Klar TV Server' -ErrorAction SilentlyContinue)) { throw 'Firewall-Regel fehlt' }
+          # Neustart des Dienstes: Anmeldung bleibt
+          Restart-Service KlarTVServer
+          Start-Sleep 15
+          $st = Invoke-RestMethod http://localhost:8095/api/state -WebSession $s
+          if ($st.user -ne 'test') { throw 'Sitzung nach Neustart verloren' }
+          # Deinstallieren
+          $u = Start-Process 'C:\Test\Klar TV Server\unins000.exe' '/VERYSILENT /SUPPRESSMSGBOXES' -Wait -PassThru
+          Start-Sleep 5
+          if (Get-Service KlarTVServer -ErrorAction SilentlyContinue) { throw 'Dienst nicht entfernt' }
+          if (Test-Path 'C:\Test\Klar TV Server\KlarTV-Server.exe') { throw 'Nicht deinstalliert' }
+          if (Get-NetFirewallRule -DisplayName 'Klar TV Server' -ErrorAction SilentlyContinue) { throw 'Firewall-Regel nicht entfernt' }
+
+      - name: Testbericht hochladen
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: server-bericht
+          path: |
+            server/build/reports/tests/
+            C:/ProgramData/Klar TV Server/logs/
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Setup hochladen
+        uses: actions/upload-artifact@v6
+        with:
+          name: server-setup
+          path: server/build/setup/*.exe
+          retention-days: 5
+          compression-level: 0

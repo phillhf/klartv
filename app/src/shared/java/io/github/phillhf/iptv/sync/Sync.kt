@@ -222,6 +222,8 @@ class SyncHost(private val context: AppContext, private val device: String) {
         val path = request.getOrNull(1).orEmpty()
         if (path != "/$token/push" && path != "/$token/pull") return answer("404 Not Found")
         if (expired || used || length > 30_000_000) return answer("410 Gone")
+        // Ohne Anbieter nichts herausgeben: Das andere Gerät würde sonst seinen Stand durch einen leeren ersetzen
+        if (path.endsWith("/pull") && AccountStore(context).all().isEmpty()) return answer("409 Conflict")
         used = true
         if (path.endsWith("/pull")) {
             answer("200 OK", SyncCrypto.encrypt(key, SyncData.export(context, device)))
@@ -334,6 +336,7 @@ object SyncClient {
         val c = open(link, "pull")
         try {
             if (c.responseCode == 410) throw IOException(t("Der Code ist abgelaufen. Bitte neu anzeigen lassen."))
+            if (c.responseCode == 409) throw IOException(t("Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden."))
             if (c.responseCode != 200) throw IOException(t("Das andere Gerät meldet Fehler %1.", c.responseCode))
             val data = SyncCrypto.decrypt(link.key, c.inputStream.use { it.readBytes() })
             SyncData.import(context, data)

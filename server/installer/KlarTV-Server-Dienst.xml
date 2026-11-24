@@ -1,0 +1,20 @@
+<!-- Windows-Dienst für den Klar TV Server (WinSW). Liegt neben KlarTV-Server-Dienst.exe. -->
+<service>
+  <id>KlarTVServer</id>
+  <name>Klar TV Server</name>
+  <description>Klar TV im Browser: Live-TV, Filme und Serien vom eigenen IPTV-Anbieter.</description>
+  <executable>%BASE%\KlarTV-Server.exe</executable>
+  <workingdirectory>%BASE%</workingdirectory>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <!-- Abgestürzt oder neuer Port: neu starten -->
+  <onfailure action="restart" delay="5 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>15 sec</stoptimeout>
+  <logpath>%ProgramData%\Klar TV Server\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>2048</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+</service>

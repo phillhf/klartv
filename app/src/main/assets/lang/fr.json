@@ -374,5 +374,6 @@
  "Schlüssel ungültig": "Clé invalide",
  "Prüfe Verbindung …": "Vérification de la connexion …",
  "Verbunden": "Connecté",
- "Nicht verbunden: %1": "Non connecté : %1"
+ "Nicht verbunden: %1": "Non connecté : %1",
+ "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "Aucun fournisseur n’est encore configuré sur l’autre appareil. Envoie plutôt d’ici vers là-bas."
 }

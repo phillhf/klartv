@@ -374,5 +374,6 @@
  "Schlüssel ungültig": "Clave no válida",
  "Prüfe Verbindung …": "Comprobando conexión …",
  "Verbunden": "Conectado",
- "Nicht verbunden: %1": "No conectado: %1"
+ "Nicht verbunden: %1": "No conectado: %1",
+ "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "En el otro dispositivo todavía no hay ningún proveedor. Envía mejor desde aquí hacia allí."
 }

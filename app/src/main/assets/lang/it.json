@@ -374,5 +374,6 @@
  "Schlüssel ungültig": "Chiave non valida",
  "Prüfe Verbindung …": "Verifica connessione …",
  "Verbunden": "Connesso",
- "Nicht verbunden: %1": "Non connesso: %1"
+ "Nicht verbunden: %1": "Non connesso: %1",
+ "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "Sull’altro dispositivo non è ancora configurato alcun provider. Invia invece da qui a lì."
 }

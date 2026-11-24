@@ -12,7 +12,11 @@ plugins {
 val appVersion = Regex("versionName = \"([^\"]+)\"").find(file("../app/build.gradle.kts").readText())!!.groupValues[1]
 
 kotlin {
-    sourceSets.main { kotlin.srcDir("../app/src/shared/java") }
+    // Gemeinsam mit dem Server: Programmführer-Datenbank und verschlüsselte Einstellungen
+    sourceSets.main {
+        kotlin.srcDir("../app/src/shared/java")
+        kotlin.srcDir("../jvm/src")
+    }
     // Tests ohne Android laufen auch hier
     sourceSets.test {
         kotlin.srcDir("../app/src/test/java")

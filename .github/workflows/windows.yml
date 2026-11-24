@@ -4,7 +4,7 @@ name: Windows-App
 on:
   push:
     branches: [main, windows]
-    paths: ['desktop/**', 'app/src/shared/**', 'app/src/main/assets/**', 'app/build.gradle.kts', 'gradle/**', '.github/workflows/windows.yml']
+    paths: ['desktop/**', 'jvm/**', 'app/src/shared/**', 'app/src/main/assets/**', 'app/build.gradle.kts', 'gradle/**', '.github/workflows/windows.yml']
   workflow_dispatch:
 
 permissions:

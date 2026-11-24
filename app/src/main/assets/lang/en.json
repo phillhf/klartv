@@ -374,5 +374,6 @@
  "Schlüssel ungültig": "Invalid key",
  "Prüfe Verbindung …": "Checking connection …",
  "Verbunden": "Connected",
- "Nicht verbunden: %1": "Not connected: %1"
+ "Nicht verbunden: %1": "Not connected: %1",
+ "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "No provider is set up on the other device yet. Please send from here to there instead."
 }

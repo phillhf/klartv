@@ -100,12 +100,20 @@ class Prefs(private val file: File) {
     }
 }
 
-/** Textdateien, die nur das eigene Windows-Konto lesen kann. */
+/**
+ * Textdateien, die nur das eigene Windows-Konto lesen kann. Der Server läuft als Dienst und schützt mit dem
+ * Schlüssel des Rechners ([machine]); den Ordner dürfen dort nur Administratoren und das System lesen.
+ */
 object SecureFile {
+    var machine = false
+
+    // CRYPTPROTECT_UI_FORBIDDEN, beim Server zusätzlich CRYPTPROTECT_LOCAL_MACHINE
+    private val flags: Int get() = if (machine) 0x5 else 0
+
     fun read(file: File): String? {
         if (!file.exists()) return null
         return try {
-            String(Crypt32Util.cryptUnprotectData(file.readBytes()))
+            String(Crypt32Util.cryptUnprotectData(file.readBytes(), null, flags, null))
         } catch (e: RuntimeException) {
             // Von einem anderen Konto oder beschädigt: nicht überschreiben
             runCatching { Files.move(file.toPath(), File(file.path + ".alt").toPath(), StandardCopyOption.REPLACE_EXISTING) }
@@ -115,7 +123,7 @@ object SecureFile {
 
     fun write(file: File, text: String) {
         val tmp = File(file.path + ".tmp")
-        tmp.writeBytes(Crypt32Util.cryptProtectData(text.toByteArray()))
+        tmp.writeBytes(Crypt32Util.cryptProtectData(text.toByteArray(), null, flags, "", null))
         Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 }

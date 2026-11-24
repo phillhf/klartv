@@ -9,8 +9,11 @@ bereitstellt. Zugangsdaten, Favoriten und Verlauf bleiben auf dem Gerät.
 ## Herunterladen
 
 Auf der Seite [Releases](https://github.com/phillhf/klartv/releases/latest) steht im Dateinamen, für welches Gerät
-die Datei ist: `Handy-Tablet`, `Fernseher-TV-Stick` oder `Windows-Setup`. Meldet dein Gerät „App nicht installiert“ oder
+die Datei ist: `Handy-Tablet`, `Fernseher-TV-Stick`, `Windows-Setup` oder `Windows-Server-Setup`. Meldet dein Gerät „App nicht installiert“ oder
 „nicht kompatibel“, nimm die jeweils andere Android-Datei. `NUR-PLAY-STORE` lässt sich nicht installieren.
+
+**Klar TV Server:** läuft zu Hause als Windows-Dienst und zeigt alles als Webseite, etwa für den Browser im Auto.
+Einrichtung und Cloudflare-Tunnel: [server/README.md](server/README.md).
 
 ## Funktionen
 
@@ -38,9 +41,12 @@ Gebaut wird mit GitHub Actions:
   GitHub-Release `v<Version>`
 
 - **Windows-App:** Tests, echtes Fenster mit Wiedergabe, Setup mit Installieren und Deinstallieren
+- **Windows-Server:** Tests mit echtem FFmpeg (Ton- und Bildumwandlung, Anmeldung, Sperre), Setup mit Dienst,
+  Firewall-Regel und Deinstallation
 
 Android und Windows teilen sich den Code in `app/src/shared`; Android-Eigenes liegt in `app/src/main`,
-Windows-Eigenes in `desktop/`. Windows-App starten: `gradlew -p desktop run` (ohne Android-SDK, JDK 21).
+Windows-Eigenes in `desktop/`, der Server in `server/`; was App und Server unter Windows teilen, in `jvm/`.
+Windows-App starten: `gradlew -p desktop run` (ohne Android-SDK, JDK 21). Server: `gradlew -p server run`.
 
 Neue Texte laufen durch `t("…")`; `python tools/texte.py` zeigt, welche Übersetzungen fehlen.
 

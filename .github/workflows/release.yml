@@ -26,19 +26,23 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
 
-      - name: Windows-Setup bauen
+      - name: Windows-Setups bauen (App und Server)
         shell: bash
         run: |
           ./gradlew -p desktop test createDistributable
+          ./gradlew -p server test createDistributable
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
           [ -f "$ISCC" ] || choco install innosetup -y --no-progress > /dev/null
           MSYS_NO_PATHCONV=1 "$ISCC" "/DAppVersion=$VERSION" desktop/installer/KlarTV.iss
+          MSYS_NO_PATHCONV=1 "$ISCC" "/DAppVersion=$VERSION" server/installer/KlarTV-Server.iss
+          # Beide in einen Ordner, damit sie nach dem Herunterladen nebeneinander liegen
+          mkdir -p setups && cp desktop/build/setup/*.exe server/build/setup/*.exe setups/
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: windows-setup
-          path: desktop/build/setup/*.exe
+          path: setups/*.exe
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
@@ -127,5 +131,6 @@ jobs:
           cp "$apk-arm64-v8a-release.apk" "KlarTV-$VERSION-Handy-Tablet.apk"
           cp "$apk-armeabi-v7a-release.apk" "KlarTV-$VERSION-Fernseher-TV-Stick.apk"
           cp "$RUNNER_TEMP/windows/KlarTV-$VERSION-Windows-Setup.exe" .
+          cp "$RUNNER_TEMP/windows/KlarTV-$VERSION-Windows-Server-Setup.exe" .
           sed "s/@V@/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes --notes-file "$RUNNER_TEMP/notes.md" KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk KlarTV-"$VERSION"*.exe
