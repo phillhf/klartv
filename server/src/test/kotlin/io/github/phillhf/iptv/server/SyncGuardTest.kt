@@ -1,6 +1,7 @@
 package io.github.phillhf.iptv.server
 
 import io.github.phillhf.iptv.platform.AppContext
+import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.sync.SyncClient
 import io.github.phillhf.iptv.sync.SyncHost
 import org.junit.Assert.assertTrue
@@ -19,7 +20,8 @@ class SyncGuardTest {
             SyncClient.pull(phone, host.link.copy(hosts = listOf("127.0.0.1")))
             throw AssertionError("Hätte abgelehnt werden müssen")
         } catch (e: IOException) {
-            assertTrue(e.message, e.message!!.contains("kein Anbieter"))
+            // Je nach Sprache des Rechners deutsch oder übersetzt
+            assertTrue(e.message, e.message == t("Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden."))
         } finally {
             host.stop()
         }
