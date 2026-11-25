@@ -49,6 +49,9 @@ const ICONS = {
   fwd: svg('M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z'),
   lock: svg('M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'),
   guide: svg('M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'),
+  check: svg('M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'),
+  checkCircle: svg('M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'),
+  checkOff: svg('M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-5.83l-2.59-2.58L6 13l4 4 8-8-1.41-1.42z'),
   close: svg('M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'),
   logo: '<svg viewBox="0 0 108 108" aria-hidden="true"><path d="M34 36h40a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H34a4 4 0 0 1-4-4V40a4 4 0 0 1 4-4z" fill="none" stroke="#38BDF8" stroke-width="4" stroke-linejoin="round"/><path d="M48 45l14 9-14 9z" fill="#38BDF8"/><path d="M44 79h20" stroke="#38BDF8" stroke-width="4" stroke-linecap="round"/></svg>',
 };
@@ -159,6 +162,46 @@ function catalog(kind, refresh) {
 }
 
 const isFav = (key) => (S.state?.favorites || []).includes(key);
+
+// ---------- Gesehen ----------
+
+const isWatched = (key) => (S.state?.watched || []).includes(key);
+
+/** Gesehene Folgen der gerade offenen Serie. */
+const watchedEps = new Set();
+
+/** Haken für gesehene Filme und fertige Serien, „3/10“ für angefangene Serien. */
+function watchMark(s) {
+  if (s.k.startsWith('MOVIE:')) return isWatched(s.k) ? h('span', { class: 'seen-mark', icon: 'check', title: 'Gesehen' }) : null;
+  const p = S.state?.seriesSeen?.[s.k];
+  if (!p || !p[0]) return null;
+  if (p[0] >= p[1]) return h('span', { class: 'seen-mark', icon: 'check', title: 'Gesehen' });
+  return h('span', { class: 'seen-count' }, `${p[0]}/${p[1]}`);
+}
+
+async function setWatched(keys, on) {
+  await api('watched', { keys, on });
+  keys.forEach((k) => (on ? watchedEps.add(k) : watchedEps.delete(k)));
+  await loadState();
+}
+
+function watchedButton(keys, label, labelDone, after) {
+  const done = () => keys.length > 0 && keys.every((k) => (k.startsWith('MOVIE:') ? isWatched(k) : watchedEps.has(k)));
+  const b = h('button', { class: 'btn' });
+  const paint = () => {
+    const d = done();
+    b.innerHTML = ICONS[d ? 'checkCircle' : 'checkOff'];
+    b.classList.toggle('seen', d);
+    b.append(d ? labelDone : label);
+  };
+  b.onclick = async () => {
+    await setWatched(keys, !done());
+    paint();
+    if (after) after();
+  };
+  paint();
+  return b;
+}
 async function toggleFav(key) {
   const r = await api('favorite', { key });
   S.state.favorites = r.favorites;
@@ -508,7 +551,7 @@ async function channelPage(id, streamId) {
 function posterCard(s) {
   const kind = s.k.split(':')[0];
   return h('a', { class: 'poster', href: kind === 'MOVIE' ? `#movie/${encodeURIComponent(s.i)}` : `#serie/${encodeURIComponent(s.i)}` },
-    h('div', { class: 'img' }, ...picture(s.l, s.n), s.r ? h('span', { class: 'rating' }, String(s.r).slice(0, 3)) : null),
+    h('div', { class: 'img' }, ...picture(s.l, s.n), s.r ? h('span', { class: 'rating' }, String(s.r).slice(0, 3)) : null, watchMark(s)),
     h('div', { class: 't' }, s.n));
 }
 
@@ -516,7 +559,7 @@ const SORTS = [['', 'Wie beim Anbieter'], ['new', 'Neueste zuerst'], ['az', 'A �
 
 async function gridPage(id, kind, catId) {
   $main.append(loading());
-  const c = await catalog(kind);
+  const [c] = await Promise.all([catalog(kind), loadState()]);
   if (id !== routeId) return;
   const base = kind === 'MOVIE' ? 'movies' : 'series';
   const favs = (S.state.favorites || []).filter((k) => k.startsWith(kind + ':')).map((k) => c.byKey.get(k)).filter(Boolean);
@@ -579,7 +622,8 @@ async function moviePage(id, movieId) {
   } else {
     buttons.append(h('button', { class: 'btn primary', icon: 'play', onclick: () => player.open({ ...item, start: 0 }) }, 'Abspielen'));
   }
-  buttons.append(fav);
+  await loadState();
+  buttons.append(watchedButton([s.k], 'Als gesehen markieren', 'Gesehen'), fav);
   $main.replaceChildren(el);
 }
 
@@ -602,23 +646,44 @@ async function seriesPage(id, seriesId, season) {
       return all[i + 1] ? epItem(all[i + 1]) : null;
     },
   });
+  watchedEps.clear();
+  all.forEach((e) => { if (e.watched) watchedEps.add('EP:' + e.id); });
   const contEp = cont && all.find((e) => 'EP:' + e.id === cont.key);
+  // Wie bei Kodi: angefangene Folge, sonst die erste ungesehene
+  const nextEp = contEp || all.find((e) => !watchedEps.has('EP:' + e.id));
   if (contEp) buttons.append(h('button', { class: 'btn primary', icon: 'play', onclick: () => player.open({ ...epItem(contEp), start: cont.position }) }, `Weiter: S${contEp.season} E${contEp.no}`));
+  else if (nextEp && nextEp !== all[0]) buttons.append(h('button', { class: 'btn primary', icon: 'play', onclick: () => player.open({ ...epItem(nextEp), start: 0 }) }, `Weiter: S${nextEp.season} E${nextEp.no}`));
   else if (all.length) buttons.append(h('button', { class: 'btn primary', icon: 'play', onclick: () => player.open({ ...epItem(all[0]), start: 0 }) }, 'Erste Folge'));
   buttons.append(fav);
-  const chosen = season ?? (contEp ? contEp.season : seasons[0]?.season);
+  const chosen = season ?? (nextEp ? nextEp.season : seasons[0]?.season);
   const tabs = h('div', { class: 'chips' });
   const list = h('div');
+  const seasonDone = (x) => x.episodes.length > 0 && x.episodes.every((e) => watchedEps.has('EP:' + e.id));
+  const paintTabs = () => tabs.querySelectorAll('.chip').forEach((t) => {
+    const x = seasons.find((y) => y.season === Number(t.dataset.s));
+    t.replaceChildren(...(seasonDone(x) ? [h('span', { class: 'chip-check', icon: 'check' })] : []), `Staffel ${x.season}`);
+  });
   const show = (no) => {
     tabs.querySelectorAll('.chip').forEach((t) => t.classList.toggle('on', Number(t.dataset.s) === no));
+    paintTabs();
     list.replaceChildren();
     const sea = seasons.find((x) => x.season === no);
+    if (sea && sea.episodes.length) {
+      list.append(h('div', { class: 'row', style: 'margin:4px 0 12px' },
+        watchedButton(sea.episodes.map((e) => 'EP:' + e.id), 'Staffel als gesehen markieren', 'Staffel gesehen', () => show(no))));
+    }
     for (const e of sea ? sea.episodes : []) {
       const ep = { ...e, season: no };
       const share = e.position > 0 ? Math.min(100, (e.position / ((parseInt(e.duration, 10) || 45) * 60000)) * 100) : 0;
-      list.append(h('button', { class: 'episode', onclick: () => player.open({ ...epItem(ep), start: e.position > 5000 ? e.position : 0 }) },
-        h('div', { class: 'img' }, ...picture(e.image || info.backdrop || info.cover, ''), share ? h('div', { class: 'bar' }, h('i', { style: `width:${share}%` })) : null),
-        h('div', { class: 'grow' }, h('div', { class: 't' }, `${e.no}. ${e.title}`), e.plot ? h('div', { class: 'p' }, e.plot) : null)));
+      const key = 'EP:' + e.id;
+      const seen = watchedEps.has(key);
+      const mark = h('button', { class: 'icon-btn ep-mark' + (seen ? ' seen' : ''), icon: seen ? 'checkCircle' : 'checkOff', title: seen ? 'Gesehen' : 'Als gesehen markieren' });
+      mark.onclick = async (ev) => { ev.stopPropagation(); await setWatched([key], !watchedEps.has(key)); show(no); };
+      list.append(h('div', { class: 'episode' + (seen ? ' watched' : ''), role: 'button', tabindex: 0, onclick: () => player.open({ ...epItem(ep), start: e.position > 5000 ? e.position : 0 }) },
+        h('div', { class: 'img' }, ...picture(e.image || info.backdrop || info.cover, ''), share ? h('div', { class: 'bar' }, h('i', { style: `width:${share}%` })) : null,
+          seen ? h('span', { class: 'seen-mark', icon: 'check' }) : null),
+        h('div', { class: 'grow' }, h('div', { class: 't' }, `${e.no}. ${e.title}`), e.plot ? h('div', { class: 'p' }, e.plot) : null),
+        mark));
     }
   };
   seasons.forEach((x) => tabs.append(h('button', { class: 'chip', 'data-s': x.season, onclick: () => show(x.season) }, `Staffel ${x.season}`)));

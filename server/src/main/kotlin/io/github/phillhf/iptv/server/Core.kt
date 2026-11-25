@@ -165,7 +165,11 @@ class Core(val context: AppContext) {
 
     fun seriesInfo(id: String): SeriesInfo {
         series[id]?.let { if (System.currentTimeMillis() - it.time < 3_600_000L) return it.value }
-        return requireBackend().seriesInfo(id).also { series[id] = Cached(it, System.currentTimeMillis()) }
+        return requireBackend().seriesInfo(id).also { info ->
+            series[id] = Cached(info, System.currentTimeMillis())
+            // Wie in der App: Folgen merken, damit Plakate „3/10“ zeigen können
+            library()?.saveSeriesEpisodes("SERIES:$id", info.seasons.toSortedMap().values.flatten().map { it.key })
+        }
     }
 
     // ---------- Abspielen ----------
@@ -300,10 +304,7 @@ class Core(val context: AppContext) {
         val lib = library() ?: return
         val key = keyOf(ref) ?: return
         when {
-            duration > 120_000 && position > duration - 60_000 -> {
-                lib.clearPosition(key)
-                lib.removeContinue(key)
-            }
+            duration > 120_000 && position > duration - 60_000 -> lib.finished(key)
             position > 5_000 -> {
                 val url = resolve(ref)?.url ?: return
                 lib.savePosition(key, position)

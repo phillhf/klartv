@@ -314,6 +314,8 @@ private fun MediaWide(vm: AppViewModel, kind: Kind, catalog: Catalog) {
                                 progress = vm.progress(s.key),
                                 onFocused = { vm.focus(s) },
                                 onImageError = { vm.coverFailed(s, image) },
+                                watched = vm.watchMark(s).first,
+                                seen = vm.watchMark(s).second,
                             ) {
                                 vm.focus(s)
                                 vm.open(openScreen(kind, s))
@@ -352,7 +354,11 @@ private fun MediaPhone(vm: AppViewModel, kind: Kind, catalog: Catalog) {
         ) {
             items(list) { s ->
                 val image = vm.cover(s)
-                PosterCard(title = s.name, image = image, rating = s.rating, progress = vm.progress(s.key), onImageError = { vm.coverFailed(s, image) }) {
+                val mark = vm.watchMark(s)
+                PosterCard(
+                    title = s.name, image = image, rating = s.rating, progress = vm.progress(s.key), onImageError = { vm.coverFailed(s, image) },
+                    watched = mark.first, seen = mark.second,
+                ) {
                     vm.focus(s)
                     vm.open(openScreen(kind, s))
                 }

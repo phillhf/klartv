@@ -165,8 +165,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
             onError()
             return
         }
-        PlaybackQueue.library?.clearPosition(item.key)
-        PlaybackQueue.library?.removeContinue(item.key)
+        if (!item.catchup) PlaybackQueue.finished(item.key)
         wasReady = false
         if (ui.index < ui.items.lastIndex) load(ui.index + 1) else close()
     }
@@ -516,10 +515,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
         val duration = player.durationMs
         val position = player.positionMs
         when {
-            duration > 120_000 && position > duration - 60_000 -> {
-                lib.clearPosition(item.key)
-                lib.removeContinue(item.key)
-            }
+            duration > 120_000 && position > duration - 60_000 -> PlaybackQueue.finished(item.key)
             position > 5_000 -> {
                 lib.savePosition(item.key, position)
                 // Dateien vom Gerät gehören nicht zum Anbieter und erscheinen nicht in „Weiterschauen“

@@ -300,6 +300,7 @@ class Web(
             "series" -> {
                 val i = core.seriesInfo(r.q("id"))
                 val lib = core.library()
+                val watched = lib?.watched().orEmpty()
                 val seasons = JSONArray()
                 i.seasons.toSortedMap().forEach { (no, eps) ->
                     seasons.put(
@@ -309,6 +310,7 @@ class Web(
                                 eps.map { e ->
                                     JSONObject().put("id", e.id).put("no", e.number).put("title", e.title).put("plot", e.plot)
                                         .put("image", e.image).put("duration", e.duration).put("position", lib?.position(e.key) ?: 0L)
+                                        .put("watched", watched.contains(e.key))
                                 },
                             ),
                         ),
@@ -330,6 +332,14 @@ class Web(
                     b.getString("ref"), b.optString("parent"), b.optString("title"), b.optString("subtitle").ifBlank { null },
                     b.optString("image").ifBlank { null }, b.optLong("position"), b.optLong("duration"),
                 )
+                send(ex, 200, ok())
+            }
+            "watched" -> {
+                val lib = core.library() ?: throw BadRequest("Kein Anbieter")
+                val b = r.body()
+                val keys = b.getJSONArray("keys").let { a -> (0 until a.length()).map { a.getString(it) } }
+                    .filter { it.startsWith("MOVIE:") || it.startsWith("EP:") }
+                lib.setWatched(keys, b.optBoolean("on", true))
                 send(ex, 200, ok())
             }
             "continue/remove" -> {
@@ -493,6 +503,12 @@ class Web(
             .put("port", config.port)
         if (lib != null) {
             o.put("favorites", JSONArray(lib.favorites()))
+            val watched = lib.watched()
+            o.put("watched", JSONArray(watched.filter { it.startsWith("MOVIE:") }))
+            // Serien: gesehene und alle Folgen
+            val series = JSONObject()
+            lib.seriesEpisodes().forEach { (k, eps) -> if (eps.isNotEmpty()) series.put(k, JSONArray().put(eps.count { it in watched }).put(eps.size)) }
+            o.put("seriesSeen", series)
             o.put("recent", JSONArray(lib.recent()))
             o.put("continue", JSONArray(lib.continueList().map { c ->
                 JSONObject().put("key", c.key).put("parent", c.parentKey).put("title", c.title).put("subtitle", c.subtitle ?: "")

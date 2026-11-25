@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -76,6 +79,24 @@ private fun resumeTick(): Int {
     var tick by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { tick++ }
     return tick
+}
+
+/** Als gesehen markieren oder wieder zurücknehmen; [keys]: ein Film oder alle Folgen einer Staffel. */
+@Composable
+private fun WatchedButton(vm: AppViewModel, keys: List<String>, season: Boolean = false) {
+    val done = keys.isNotEmpty() && keys.all { vm.isWatched(it) }
+    OutlinedButton(onClick = { vm.setWatched(keys, !done) }, modifier = Modifier.focusRing(Pill)) {
+        Icon(if (done) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle, contentDescription = null, tint = if (done) Klar.Accent else Klar.Text)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            when {
+                season && done -> t("Staffel gesehen")
+                season -> t("Staffel als gesehen markieren")
+                done -> t("Gesehen")
+                else -> t("Als gesehen markieren")
+            },
+        )
+    }
 }
 
 @Composable
@@ -269,6 +290,7 @@ fun MovieScreen(vm: AppViewModel, stream: Stream) {
                             vm.playMovie(context, stream, fromStart = true)
                         }
                     }
+                    WatchedButton(vm, listOf(stream.key))
                     FavoriteButton(vm, stream)
                     DownloadButton(stream.key) { vm.downloadMovie(stream) }
                     TrailerButton(info?.trailer ?: more?.trailer)
@@ -304,7 +326,10 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
             item { TitleBar("", onBack = { vm.back() }) }
             val seasons = info?.seasons?.keys?.toList().orEmpty()
-            val selected = season?.takeIf { it in seasons } ?: seasons.firstOrNull()
+            // Wie bei Kodi: die Staffel mit der nächsten ungesehenen Folge
+            val selected = season?.takeIf { it in seasons }
+                ?: seasons.firstOrNull { n -> info?.seasons?.get(n).orEmpty().any { !vm.isWatched(it.key) } }
+                ?: seasons.firstOrNull()
             val episodes = info?.seasons?.get(selected).orEmpty()
             item {
                 DetailHeader(
@@ -322,8 +347,9 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                     cast = if (more?.people.isNullOrEmpty()) info?.cast else null,
                 ) {
                     if (episodes.isNotEmpty()) {
-                        // Erste Folge, die noch nicht fertig ist, sonst Folge 1
-                        val resumeIndex = episodes.indexOfFirst { vm.position(it.key) > 0 }.takeIf { it >= 0 } ?: 0
+                        // Angefangene Folge, sonst die erste ungesehene, sonst Folge 1
+                        val resumeIndex = episodes.indexOfFirst { vm.position(it.key) > 0 }.takeIf { it >= 0 }
+                            ?: episodes.indexOfFirst { !vm.isWatched(it.key) }.takeIf { it >= 0 } ?: 0
                         val e = episodes[resumeIndex]
                         PrimaryButton(
                             if (vm.position(e.key) > 0) t("%1 fortsetzen", "S${e.season} E${e.number}") else t("%1 abspielen", "S${e.season} E${e.number}"),
@@ -349,16 +375,26 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(seasons) { n ->
-                                    SeasonChip(if (n == 0) t("Folgen") else t("Staffel %1", n), n == selected) { season = n }
+                                    val all = s.value.seasons[n].orEmpty()
+                                    val done = all.isNotEmpty() && all.all { vm.isWatched(it.key) }
+                                    SeasonChip(if (n == 0) t("Folgen") else t("Staffel %1", n), n == selected, done) { season = n }
                                 }
                             }
                         }
                     } else {
                         item { Spacer(Modifier.padding(top = 16.dp)) }
                     }
+                    if (episodes.isNotEmpty()) {
+                        item {
+                            Row(Modifier.padding(horizontal = if (wide) 48.dp else 16.dp).padding(bottom = 8.dp)) {
+                                WatchedButton(vm, episodes.map { it.key }, season = true)
+                            }
+                        }
+                    }
                     itemsIndexed(episodes) { i, e ->
                         val position = remember(tick, e.key) { vm.position(e.key) }
                         val progress = vm.continueList.firstOrNull { it.key == e.key }?.progress ?: if (position > 0) 0.05f else 0f
+                        val seen = vm.isWatched(e.key)
                         Row(Modifier.padding(horizontal = if (wide) 32.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             EpisodeRow(
                                 modifier = Modifier.weight(1f),
@@ -367,8 +403,13 @@ fun SeriesScreen(vm: AppViewModel, stream: Stream) {
                                 plot = e.plot,
                                 image = e.image ?: s.value.backdrop ?: s.value.cover ?: stream.logo,
                                 progress = progress,
+                                watched = seen,
                                 onClick = { vm.playEpisodes(context, stream, s.value, episodes, i) },
                             )
+                            RoundButton(
+                                if (seen) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                                if (seen) t("Gesehen") else t("Als gesehen markieren"),
+                            ) { vm.setWatched(listOf(e.key), !seen) }
                             EpisodeDownload(e.key) { vm.downloadEpisode(stream, s.value, e) }
                         }
                     }
@@ -394,14 +435,26 @@ private fun EpisodeDownload(key: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SeasonChip(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun SeasonChip(label: String, selected: Boolean, watched: Boolean, onClick: () -> Unit) {
     if (selected) {
         Button(
             onClick = onClick,
             modifier = Modifier.focusRing(Pill),
             colors = ButtonDefaults.buttonColors(containerColor = Klar.Accent, contentColor = Color(0xFF02131D)),
-        ) { Text(label) }
+        ) {
+            if (watched) {
+                Icon(Icons.Filled.Check, contentDescription = t("Gesehen"), modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(label)
+        }
     } else {
-        OutlinedButton(onClick = onClick, modifier = Modifier.focusRing(Pill)) { Text(label, color = Klar.Text) }
+        OutlinedButton(onClick = onClick, modifier = Modifier.focusRing(Pill)) {
+            if (watched) {
+                Icon(Icons.Filled.Check, contentDescription = t("Gesehen"), tint = Klar.Accent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(label, color = Klar.Text)
+        }
     }
 }

@@ -236,6 +236,8 @@ fun ShelfView(vm: AppViewModel, data: ShelfData, side: Dp, wide: Boolean, onFocu
                             onImageError = { vm.coverFailed(s, vm.cover(s)) },
                             rating = s.rating,
                             progress = vm.progress(s.key),
+                            watched = vm.watchMark(s).first,
+                            seen = vm.watchMark(s).second,
                             modifier = focusHere.width(if (wide) 124.dp else 112.dp),
                             onFocused = { vm.focus(s); onFocusTile(tile) },
                             onClick = open,

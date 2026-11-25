@@ -375,5 +375,9 @@
  "Prüfe Verbindung …": "Bağlantı denetleniyor …",
  "Verbunden": "Bağlandı",
  "Nicht verbunden: %1": "Bağlı değil: %1",
- "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "Diğer cihazda henüz sağlayıcı ayarlanmamış. Lütfen buradan oraya gönder."
+ "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "Diğer cihazda henüz sağlayıcı ayarlanmamış. Lütfen buradan oraya gönder.",
+ "Gesehen": "İzlendi",
+ "Als gesehen markieren": "İzlendi olarak işaretle",
+ "Staffel gesehen": "Sezon izlendi",
+ "Staffel als gesehen markieren": "Sezonu izlendi olarak işaretle"
 }

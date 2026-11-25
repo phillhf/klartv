@@ -99,6 +99,11 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     var recent by mutableStateOf<List<String>>(emptyList())
         private set
     var continueList by mutableStateOf<List<ContinueEntry>>(emptyList())
+
+    /** Gesehene Filme und Folgen. */
+    var watched by mutableStateOf<Set<String>>(emptySet())
+        private set
+    private var seriesEpisodes by mutableStateOf<Map<String, List<String>>>(emptyMap())
         private set
     var tab by mutableStateOf(Tab.START)
 
@@ -230,6 +235,8 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
             favorites = it.favorites()
             recent = it.recent()
             continueList = it.continueList()
+            watched = it.watched()
+            seriesEpisodes = it.seriesEpisodes()
             locked = it.lockedCategories()
             custom = it.custom()
             covers.clear()
@@ -626,7 +633,10 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     suspend fun seriesInfo(s: Stream): Load<SeriesInfo> {
         val b = backend ?: return Load.Error(t("Kein Anbieter ausgewählt."))
         return try {
-            Load.Ready(withContext(Dispatchers.IO) { b.seriesInfo(s.id) })
+            val info = withContext(Dispatchers.IO) { b.seriesInfo(s.id) }
+            // Folgen merken, damit das Plakat zeigen kann, wie viel schon gesehen ist
+            library?.let { lib -> seriesEpisodes = lib.saveSeriesEpisodes(s.key, info.seasons.toSortedMap().values.flatten().map { it.key }) }
+            Load.Ready(info)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -830,7 +840,38 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         library?.let {
             recent = it.recent()
             continueList = it.continueList()
+            watched = it.watched()
         }
+    }
+
+    // ---------- Gesehen ----------
+
+    fun isWatched(key: String): Boolean = key in watched
+
+    /** Von Hand als gesehen oder ungesehen markieren, auch eine ganze Staffel. */
+    fun setWatched(keys: Collection<String>, on: Boolean) {
+        val lib = library ?: return
+        watched = lib.setWatched(keys, on)
+        continueList = lib.continueList()
+    }
+
+    /** Gesehene und alle Folgen einer Serie, sobald sie einmal geöffnet war. */
+    fun seriesProgress(seriesKey: String): Pair<Int, Int>? {
+        val eps = seriesEpisodes[seriesKey]?.takeIf { it.isNotEmpty() } ?: return null
+        return eps.count { it in watched } to eps.size
+    }
+
+    /** Haken für Filme und fertige Serien, „3/10“ für angefangene Serien. */
+    fun watchMark(s: Stream): Pair<Boolean, String?> = when (s.kind) {
+        Kind.MOVIE -> isWatched(s.key) to null
+        Kind.SERIES -> seriesProgress(s.key)?.let { (seen, all) ->
+            when {
+                seen >= all -> true to null
+                seen > 0 -> false to "$seen/$all"
+                else -> false to null
+            }
+        } ?: (false to null)
+        Kind.LIVE -> false to null
     }
 
     fun removeContinue(entry: ContinueEntry) {
@@ -852,6 +893,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         PlaybackQueue.startIndex = index.coerceIn(items.indices)
         PlaybackQueue.library = lib
         PlaybackQueue.epg = { epg(it) }
+        PlaybackQueue.onWatched = { refreshLibrary() }
         PlaybackQueue.catchup = { item, e -> rawCatalog(Kind.LIVE)?.byKey?.get(item.key)?.let { catchupItem(it, e) } }
         PlaybackQueue.onPlay = { item ->
             if (!item.local) {

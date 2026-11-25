@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Star
@@ -233,6 +234,14 @@ fun Badge(text: String, modifier: Modifier = Modifier, color: Color = Color.Blac
     }
 }
 
+/** Runder Haken für Gesehenes, wie bei Kodi. */
+@Composable
+fun WatchedMark(modifier: Modifier = Modifier, size: Dp = 24.dp) {
+    Box(modifier.size(size).clip(CircleShape).background(Klar.Accent), contentAlignment = Alignment.Center) {
+        Icon(Icons.Filled.Check, contentDescription = t("Gesehen"), tint = Klar.OnAccent, modifier = Modifier.size(size * 0.72f))
+    }
+}
+
 @Composable
 private fun ImageFallback(text: String) {
     Box(
@@ -262,6 +271,9 @@ fun PosterCard(
     showTitle: Boolean = true,
     onFocused: (() -> Unit)? = null,
     onImageError: (() -> Unit)? = null,
+    /** Haken: gesehen. [seen]: z. B. „3/10“ Folgen einer angefangenen Serie. */
+    watched: Boolean = false,
+    seen: String? = null,
     onClick: () -> Unit,
 ) {
     // Kein Bild: gleich nach Ersatz fragen
@@ -276,6 +288,11 @@ fun PosterCard(
                 )
             }
             if (!rating.isNullOrBlank()) Badge("★ $rating", Modifier.align(Alignment.TopEnd).padding(6.dp), textColor = Klar.Gold)
+            if (watched) {
+                WatchedMark(Modifier.align(Alignment.TopStart).padding(6.dp))
+            } else if (seen != null) {
+                Badge(seen, Modifier.align(Alignment.TopStart).padding(6.dp), textColor = Klar.Accent)
+            }
             CardProgress(progress)
         }
         if (showTitle) {
@@ -619,7 +636,16 @@ fun FavoriteStar(favorite: Boolean, onClick: () -> Unit) {
 
 /** Folge mit Vorschaubild im Breitformat, Eckdaten und kurzer Beschreibung. */
 @Composable
-fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, progress: Float, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun EpisodeRow(
+    title: String,
+    meta: String,
+    plot: String?,
+    image: String?,
+    progress: Float,
+    modifier: Modifier = Modifier,
+    watched: Boolean = false,
+    onClick: () -> Unit,
+) {
     val shape = RoundedCornerShape(12.dp)
     Row(
         modifier
@@ -636,9 +662,13 @@ fun EpisodeRow(title: String, meta: String, plot: String?, image: String?, progr
                 AsyncImage(model = image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
             CardProgress(progress)
+            if (watched) WatchedMark(Modifier.align(Alignment.TopStart).padding(4.dp))
         }
         Column(Modifier.padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+            Text(
+                title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium,
+                color = if (watched) Klar.TextDim else Color.Unspecified,
+            )
             if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.labelMedium, color = Klar.Accent)
             if (!plot.isNullOrBlank()) {
                 Text(plot, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = Klar.TextDim)

@@ -231,6 +231,14 @@ class ServerTest {
         val st = json(request("/api/state"))
         assertEquals("MOVIE:$id", st.getJSONArray("continue").getJSONObject(0).getString("key"))
         assertEquals(30_000, json(request("/api/vod?id=$id")).getLong("position"))
+        // Zu Ende geschaut: gesehen, nicht mehr in „Weiterschauen“
+        request("/api/progress", JSONObject().put("ref", "MOVIE:$id").put("parent", "MOVIE:$id").put("title", "Testfilm").put("position", 590_000).put("duration", 600_000))
+        val after = json(request("/api/state"))
+        assertEquals("MOVIE:$id", after.getJSONArray("watched").getString(0))
+        assertEquals(0, after.getJSONArray("continue").length())
+        // Von Hand zurücknehmen
+        assertEquals(200, request("/api/watched", JSONObject().put("keys", org.json.JSONArray(listOf("MOVIE:$id"))).put("on", false)).statusCode())
+        assertEquals(0, json(request("/api/state")).getJSONArray("watched").length())
     }
 
     @Test

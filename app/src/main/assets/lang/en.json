@@ -375,5 +375,9 @@
  "Prüfe Verbindung …": "Checking connection …",
  "Verbunden": "Connected",
  "Nicht verbunden: %1": "Not connected: %1",
- "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "No provider is set up on the other device yet. Please send from here to there instead."
+ "Auf dem anderen Gerät ist noch kein Anbieter eingerichtet. Bitte von hier dorthin senden.": "No provider is set up on the other device yet. Please send from here to there instead.",
+ "Gesehen": "Watched",
+ "Als gesehen markieren": "Mark as watched",
+ "Staffel gesehen": "Season watched",
+ "Staffel als gesehen markieren": "Mark season as watched"
 }

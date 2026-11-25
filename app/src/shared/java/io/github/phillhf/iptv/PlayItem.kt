@@ -52,6 +52,15 @@ object PlaybackQueue {
     var epg: (suspend (PlayItem) -> List<EpgEntry>)? = null
     var onPlay: ((PlayItem) -> Unit)? = null
 
+    /** Die Oberfläche frischt dann Haken und „Weiterschauen“ auf. */
+    var onWatched: (() -> Unit)? = null
+
+    /** Zu Ende geschaut: als gesehen merken, Position und „Weiterschauen“ weg. */
+    fun finished(key: String) {
+        library?.finished(key)
+        onWatched?.invoke()
+    }
+
     /** Baut den Eintrag, um eine Sendung von vorn anzusehen. */
     var catchup: (suspend (PlayItem, EpgEntry) -> PlayItem?)? = null
 }

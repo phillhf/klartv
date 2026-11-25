@@ -281,8 +281,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
             retry()
             return
         }
-        PlaybackQueue.library?.clearPosition(item.key)
-        PlaybackQueue.library?.removeContinue(item.key)
+        if (!item.catchup) PlaybackQueue.finished(item.key)
         if (ui.index < ui.items.lastIndex) load(ui.index + 1, null) else finish()
     }
 
@@ -625,10 +624,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         val duration = e.durationMs
         val position = e.positionMs
         when {
-            duration > 120_000 && position > duration - 60_000 -> {
-                lib.clearPosition(item.key)
-                lib.removeContinue(item.key)
-            }
+            duration > 120_000 && position > duration - 60_000 -> PlaybackQueue.finished(item.key)
             position > 5_000 -> {
                 lib.savePosition(item.key, position)
                 // Dateien vom Gerät gehören nicht zum Anbieter und erscheinen nicht in „Weiterschauen“

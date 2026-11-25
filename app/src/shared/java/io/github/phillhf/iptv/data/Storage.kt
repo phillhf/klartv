@@ -172,6 +172,53 @@ class Library(context: AppContext, accountId: String) {
         prefs.edit().putString("continue", arr.toString()).apply()
     }
 
+    // ---------- Gesehen ----------
+
+    /** Filme und Folgen, die zu Ende geschaut oder von Hand als gesehen markiert wurden. */
+    fun watched(): Set<String> = prefs.getString("watched", "").orEmpty().split('\n').filterTo(LinkedHashSet()) { it.isNotBlank() }
+
+    fun setWatched(keys: Collection<String>, on: Boolean): Set<String> {
+        val set = LinkedHashSet(watched())
+        if (on) {
+            set.removeAll(keys.toSet())
+            set.addAll(keys)
+            val e = prefs.edit()
+            keys.forEach { e.remove("pos:$it") }
+            e.apply()
+            saveContinue(continueList().filter { it.key !in keys })
+        } else {
+            set.removeAll(keys.toSet())
+        }
+        prefs.edit().putString("watched", set.toList().takeLast(30_000).joinToString("\n")).apply()
+        return set
+    }
+
+    /** Zu Ende geschaut: Position weg, aus „Weiterschauen“ raus, als gesehen merken. */
+    fun finished(key: String) {
+        clearPosition(key)
+        removeContinue(key)
+        setWatched(listOf(key), true)
+    }
+
+    /** Folgen je Serie, damit Plakate zeigen können, wie viel schon gesehen ist. Schlüssel → Folgen-Schlüssel. */
+    fun seriesEpisodes(): Map<String, List<String>> = runCatching {
+        val o = JSONObject(prefs.getString("series_episodes", "{}") ?: "{}")
+        o.keys().asSequence().toList().associateWith { k ->
+            o.getString(k).split(',').filter { it.isNotBlank() }.map { "EP:$it" }
+        }
+    }.getOrDefault(emptyMap())
+
+    fun saveSeriesEpisodes(seriesKey: String, episodes: List<String>): Map<String, List<String>> {
+        val map = LinkedHashMap(seriesEpisodes())
+        if (map[seriesKey] == episodes) return map
+        map.remove(seriesKey)
+        map[seriesKey] = episodes
+        val o = JSONObject()
+        map.entries.toList().takeLast(1000).forEach { (k, v) -> o.put(k, v.joinToString(",") { it.removePrefix("EP:") }) }
+        prefs.edit().putString("series_episodes", o.toString()).apply()
+        return map
+    }
+
     fun position(key: String): Long = prefs.getLong("pos:$key", 0L)
 
     fun savePosition(key: String, positionMs: Long) {
