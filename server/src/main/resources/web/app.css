@@ -293,3 +293,13 @@ select.group-select { display: none; }
   .episode .img { width: 110px; }
   .player .middle { gap: 24px; }
 }
+
+/* Profile */
+.avatar { display: inline-grid; place-items: center; border-radius: 50%; color: #0b1220; font-weight: 900; flex: none; }
+.login .card.wide { width: min(720px, 100%); }
+.profiles { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 24px 0; }
+.profile { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 132px; padding: 12px; border-radius: 16px;
+  background: none; border: 3px solid transparent; color: var(--dim); font: inherit; cursor: pointer; }
+.profile.current { color: var(--text); font-weight: 700; }
+.profile:hover, .profile:focus-visible { border-color: var(--accent); color: var(--text); outline: none; }
+.nav.me { background: none; border: 0; font: inherit; cursor: pointer; }

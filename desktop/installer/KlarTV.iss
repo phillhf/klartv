@@ -77,11 +77,18 @@ Name: "{autodesktop}\Klar TV"; Filename: "{app}\KlarTV.exe"; WorkingDir: "{app}"
 
 [Run]
 Filename: "{app}\KlarTV.exe"; WorkingDir: "{app}"; Description: "{cm:LaunchNow}"; Flags: postinstall nowait skipifsilent
+; Update aus der App (still mit /RELAUNCH=1): danach gleich wieder starten
+Filename: "{app}\KlarTV.exe"; WorkingDir: "{app}"; Flags: nowait skipifnotsilent; Check: Relaunch
 
 [UninstallDelete]
 Type: dirifempty; Name: "{app}"
 
 [Code]
+function Relaunch(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
+
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
   D: String;

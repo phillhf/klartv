@@ -111,7 +111,7 @@ fun HomeScreen(vm: AppViewModel) {
         if (wide) {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxSize().padding(start = NavCollapsed)) { TabContent(vm, wide = true) }
-                SideNav(vm.tab, { vm.tab = it }, Modifier.align(Alignment.CenterStart))
+                SideNav(vm, vm.tab, { vm.tab = it }, Modifier.align(Alignment.CenterStart))
             }
         } else {
             Column(Modifier.fillMaxSize()) {
@@ -143,7 +143,7 @@ fun HomeScreen(vm: AppViewModel) {
  * Fernbedienung sie ansteuert, und legt sich dabei über den Inhalt.
  */
 @Composable
-private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) {
+private fun SideNav(vm: AppViewModel, selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) {
     var focusInside by remember { mutableStateOf(false) }
     val mouse = remember { MutableInteractionSource() }
     val hovered by mouse.collectIsHoveredAsState()
@@ -174,6 +174,12 @@ private fun SideNav(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) 
                     Text("Klar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     Text(" TV", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Klar.Accent)
                 }
+            }
+        }
+        if (vm.profiles.size > 1) {
+            Row(Modifier.padding(start = 4.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                ProfileButton(vm, size = 36.dp)
+                if (expanded) Text(profileName(vm.profile), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 10.dp))
             }
         }
         Tab.entries.forEach { item ->

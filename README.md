@@ -26,6 +26,8 @@ Einrichtung und Cloudflare-Tunnel: [server/README.md](server/README.md).
 - **Zwei Player-Engines:** ExoPlayer und VLC; wechselt von selbst, wenn das Gerät ein Format nicht kann
 - Tonspuren, Untertitel (Größe, Farbe, eigene Dateien), Tempo, Bildformat, Schlaf-Timer, Bild im Bild, Chromecast
 - **Kindersicherung** mit PIN, sortierbare Favoriten, Suche über alles
+- **Profile** für mehrere Personen: eigene Favoriten, eigener Verlauf, Weiterschauen, Gesehen-Haken und Erinnerungen
+- **Updates** unter Windows: Die App fragt bei einer neuen Version, der Server aktualisiert sich nachts selbst; installiert wird nur, was mit dem Release-Schlüssel signiert ist
 - Eigene Videos und Musik aus freigegebenen Ordnern
 - Sechs Designs, sechs Sprachen (Deutsch, Englisch, Französisch, Spanisch, Italienisch, Türkisch)
 - Freiwillig mit eigenem Schlüssel: Schauspielerbilder von TMDB, Untertitelsuche bei OpenSubtitles

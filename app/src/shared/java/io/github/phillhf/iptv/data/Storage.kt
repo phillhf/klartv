@@ -68,9 +68,47 @@ class AccountStore(context: AppContext) {
         set(value) = prefs.edit().putBoolean("live_preview", value).apply()
 }
 
-/** Favoriten, zuletzt gesehen und Wiedergabepositionen, getrennt pro Konto. */
-class Library(context: AppContext, accountId: String) {
-    private val prefs = context.openPrefs("library_$accountId")
+/** Ein Profil im Haushalt. Das erste hat die ID "" und behält die Daten von vor den Profilen. */
+data class Profile(val id: String, val name: String, val color: Int = 0)
+
+/** Profile: Anbieter und Einstellungen gelten für alle, Favoriten, Verlauf, Gesehen und Erinnerungen je Profil. */
+class ProfileStore(context: AppContext) {
+    private val prefs = context.openPrefs("profiles")
+
+    /** Welches Profil dieses Gerät gerade nutzt. Wird beim Abgleich nicht übertragen. */
+    private val device = context.openPrefs("profile_device")
+
+    fun all(): List<Profile> {
+        val saved = runCatching {
+            val arr = JSONArray(prefs.getString("list", "[]"))
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                Profile(o.getString("id"), o.optString("name"), o.optInt("color"))
+            }
+        }.getOrDefault(emptyList())
+        // Das erste Profil gibt es immer
+        return if (saved.none { it.id == "" }) listOf(Profile("", "")) + saved else saved
+    }
+
+    fun save(list: List<Profile>) {
+        val arr = JSONArray()
+        list.forEach { arr.put(JSONObject().put("id", it.id).put("name", it.name).put("color", it.color)) }
+        prefs.edit().putString("list", arr.toString()).apply()
+    }
+
+    var activeId: String
+        get() = device.getString("active", "").orEmpty().takeIf { id -> all().any { it.id == id } } ?: ""
+        set(value) = device.edit().putString("active", value).apply()
+}
+
+/**
+ * Favoriten, zuletzt gesehen und Wiedergabepositionen, getrennt pro Konto und Profil.
+ * Sperren, eigene Senderordnung und Ersatzcover gelten für alle Profile eines Kontos.
+ */
+class Library(context: AppContext, accountId: String, profileId: String = "") {
+    /** Gemeinsam für alle Profile; beim ersten Profil liegt auch das Persönliche hier (wie vor den Profilen). */
+    private val shared = context.openPrefs("library_$accountId")
+    private val prefs = if (profileId.isEmpty()) shared else context.openPrefs(prefsName(accountId, profileId))
 
     /** Favoriten in der Reihenfolge des Nutzers. Bis 0.2.0 waren sie eine ungeordnete Menge. */
     fun favorites(): List<String> {
@@ -103,28 +141,28 @@ class Library(context: AppContext, accountId: String) {
 
     /** Gesperrte Kategorien als „ART:ID“. Null, solange der Nutzer noch nichts festgelegt hat. */
     fun lockedCategories(): Set<String>? =
-        prefs.getString("locked", null)?.split('\n')?.filter { it.isNotBlank() }?.toSet()
+        shared.getString("locked", null)?.split('\n')?.filter { it.isNotBlank() }?.toSet()
 
     fun saveLockedCategories(set: Set<String>) {
-        prefs.edit().putString("locked", set.joinToString("\n")).apply()
+        shared.edit().putString("locked", set.joinToString("\n")).apply()
     }
 
     /** Ersatzcover, die schon gefunden wurden: Schlüssel → Bildadresse. */
     fun covers(): Map<String, String> = runCatching {
-        val o = JSONObject(prefs.getString("covers", "{}") ?: "{}")
+        val o = JSONObject(shared.getString("covers", "{}") ?: "{}")
         o.keys().asSequence().toList().associateWith { o.getString(it) }
     }.getOrDefault(emptyMap())
 
     fun saveCovers(map: Map<String, String>) {
         val o = JSONObject()
         map.entries.toList().takeLast(5000).forEach { (k, v) -> o.put(k, v) }
-        prefs.edit().putString("covers", o.toString()).apply()
+        shared.edit().putString("covers", o.toString()).apply()
     }
 
-    fun custom(): Custom = Custom.fromJson(prefs.getString("custom", null))
+    fun custom(): Custom = Custom.fromJson(shared.getString("custom", null))
 
     fun saveCustom(c: Custom) {
-        prefs.edit().putString("custom", c.toJson()).apply()
+        shared.edit().putString("custom", c.toJson()).apply()
     }
 
     fun recent(): List<String> = prefs.getString("recent", "").orEmpty().split('\n').filter { it.isNotBlank() }
@@ -202,7 +240,7 @@ class Library(context: AppContext, accountId: String) {
 
     /** Folgen je Serie, damit Plakate zeigen können, wie viel schon gesehen ist. Schlüssel → Folgen-Schlüssel. */
     fun seriesEpisodes(): Map<String, List<String>> = runCatching {
-        val o = JSONObject(prefs.getString("series_episodes", "{}") ?: "{}")
+        val o = JSONObject(shared.getString("series_episodes", "{}") ?: "{}")
         o.keys().asSequence().toList().associateWith { k ->
             o.getString(k).split(',').filter { it.isNotBlank() }.map { "EP:$it" }
         }
@@ -215,7 +253,7 @@ class Library(context: AppContext, accountId: String) {
         map[seriesKey] = episodes
         val o = JSONObject()
         map.entries.toList().takeLast(1000).forEach { (k, v) -> o.put(k, v.joinToString(",") { it.removePrefix("EP:") }) }
-        prefs.edit().putString("series_episodes", o.toString()).apply()
+        shared.edit().putString("series_episodes", o.toString()).apply()
         return map
     }
 
@@ -230,8 +268,18 @@ class Library(context: AppContext, accountId: String) {
     }
 
     companion object {
-        fun delete(context: AppContext, accountId: String) {
+        fun prefsName(accountId: String, profileId: String) = if (profileId.isEmpty()) "library_$accountId" else "library_$accountId@$profileId"
+
+        /** Konto weg: gemeinsame Daten und die aller Profile. */
+        fun delete(context: AppContext, accountId: String, profiles: List<Profile> = ProfileStore(context).all()) {
             context.deletePrefs("library_$accountId")
+            profiles.filter { it.id.isNotEmpty() }.forEach { context.deletePrefs(prefsName(accountId, it.id)) }
+        }
+
+        /** Profil weg: seine persönlichen Daten bei allen Konten. */
+        fun deleteProfile(context: AppContext, profileId: String, accounts: List<Account>) {
+            if (profileId.isEmpty()) return
+            accounts.forEach { context.deletePrefs(prefsName(it.id, profileId)) }
         }
     }
 }

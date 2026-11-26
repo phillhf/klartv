@@ -46,16 +46,24 @@ object Reminders {
         prefs?.edit()?.putString("list", arr.toString())?.apply()
     }
 
-    fun find(channel: String, start: Long): Reminder? = list.firstOrNull { it.channel == channel && it.start == start }
+    /** Profil, dessen Erinnerungen im Programm zu sehen sind. */
+    var profile by mutableStateOf("")
 
-    fun add(account: String, s: Stream, e: EpgEntry): Reminder? {
+    fun find(channel: String, start: Long): Reminder? = list.firstOrNull { it.channel == channel && it.start == start && it.profile == profile }
+
+    fun add(account: String, profile: String, s: Stream, e: EpgEntry): Reminder? {
         if (e.start <= System.currentTimeMillis()) return null
         find(s.key, e.start)?.let { return it }
-        val r = Reminder(UUID.randomUUID().toString(), account, s.key, s.name, e.title, e.start)
+        val r = Reminder(UUID.randomUUID().toString(), account, s.key, s.name, e.title, e.start, profile)
         list.add(r)
         save()
         context?.scheduleReminder(r)
         return r
+    }
+
+    /** Profil gelöscht: seine Erinnerungen auch. */
+    fun removeProfile(id: String) {
+        list.filter { it.profile == id }.forEach { remove(it) }
     }
 
     fun remove(r: Reminder) {

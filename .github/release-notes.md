@@ -13,6 +13,8 @@ IPTV-Player ohne Werbung und ohne Tracking. Die App enthält keine Sender und ke
 
 **Klar TV Server:** läuft als Windows-Dienst im Hintergrund, auch ohne Anmeldung am PC. Nach der Installation im Heimnetz `http://<PC-Name>:8095` öffnen, Benutzer und Passwort festlegen, Anbieter eintragen oder per QR-Code aus der App übernehmen. Von unterwegs erreichst du ihn über einen eigenen Tunnel (z. B. Cloudflare Tunnel) auf `http://localhost:8095`. Anleitung: [server/README.md](https://github.com/phillhf/klartv/blob/main/server/README.md)
 
+**Updates unter Windows:** Ab 0.9.0 fragt die Windows-App von selbst, wenn es eine neue Version gibt, und der Server installiert sie nachts zwischen 3 und 5 Uhr, wenn niemand schaut. Beide prüfen vorher die Signatur (Dateien `.sig`). Die Version 0.9.0 selbst musst du noch einmal von Hand installieren.
+
 **Windows warnt vor einem unbekannten Herausgeber?** Das Setup hat kein gekauftes Zertifikat. „Weitere Informationen“ → „Trotzdem ausführen“. Lade es nur von dieser Seite.
 
 Die Dateien mit **NUR-PLAY-STORE** (`.aab`) lassen sich nicht installieren, sie sind zum Hochladen in den Play Store. Das gilt auch für die Auto-Fassung. „Source code“ ist der Quelltext.

@@ -36,6 +36,8 @@ class ServerTest {
         private lateinit var base: String
         private val http: HttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
         private var cookie = ""
+        private lateinit var context: AppContext
+        private lateinit var core: Core
 
         private fun ffmpeg(vararg args: String) {
             val p = ProcessBuilder(listOf(File(tools, "ffmpeg.exe").path, "-hide_banner", "-loglevel", "error", "-y") + args)
@@ -87,10 +89,10 @@ class ServerTest {
             provider.start()
 
             val dir = File(System.getProperty("klartv.data"), "server").apply { deleteRecursively(); mkdirs() }
-            val context = AppContext(dir)
+            context = AppContext(dir)
             AppSettings.init(context)
             I18n.init(context)
-            val core = Core(context)
+            core = Core(context)
             web = Web(core, Auth(context), Media(tools), Images(File(dir, "bilder")), Config(File(dir, "server.properties")))
             web.start(0, "127.0.0.1")
             base = "http://127.0.0.1:${web.port}"
@@ -250,6 +252,29 @@ class ServerTest {
         assertEquals(200, request("/vendor/mpegts.js").statusCode())
         // Unbekannte Wege zeigen die Seite, nicht Dateien des Rechners
         assertTrue(request("/../../build.gradle.kts").body().contains("app.js"))
+    }
+
+    @Test
+    fun j_profilesKeepFavoritesApart() {
+        io.github.phillhf.iptv.data.ProfileStore(context).save(
+            listOf(io.github.phillhf.iptv.data.Profile("", "Papa"), io.github.phillhf.iptv.data.Profile("kind", "Lena", 2)),
+        )
+        val st = json(request("/api/state"))
+        assertTrue(st.getBoolean("chooseProfile"))
+        assertEquals(2, st.getJSONArray("profiles").length())
+        val key = "LIVE:" + liveId(0)
+        val before = st.getJSONArray("favorites").length()
+        // Als Lena: eigener Favorit
+        assertEquals(400, request("/api/profile", JSONObject().put("id", "gibtsnicht")).statusCode())
+        val kid = json(request("/api/profile", JSONObject().put("id", "kind")))
+        assertEquals("kind", kid.getString("profile"))
+        assertTrue(!kid.getBoolean("chooseProfile"))
+        request("/api/favorite", JSONObject().put("key", key))
+        assertEquals(listOf(key), json(request("/api/state")).getJSONArray("favorites").let { a -> (0 until a.length()).map { a.getString(it) } })
+        // Zurück zu Papa: dort unverändert
+        request("/api/profile", JSONObject().put("id", ""))
+        assertEquals(before, json(request("/api/state")).getJSONArray("favorites").length())
+        assertEquals(listOf(key), io.github.phillhf.iptv.data.Library(context, core.active!!.id, "kind").favorites())
     }
 
     @Test

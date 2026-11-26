@@ -277,8 +277,41 @@ async function boot() {
   }
   if (!session.loggedIn) return showLogin();
   await loadState();
+  if (S.state.chooseProfile) return showProfiles();
   shell();
   route();
+}
+
+// ---------- Profile ----------
+
+const PROFILE_COLORS = ['#38BDF8', '#F472B6', '#34D399', '#FBBF24', '#A78BFA', '#FB7185'];
+const profileName = (p) => p.name || 'Hauptprofil';
+
+function avatar(p, size) {
+  const el = h('span', { class: 'avatar' }, profileName(p).slice(0, 1).toUpperCase());
+  el.style.cssText = `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.45)}px;background:${PROFILE_COLORS[((p.color % 6) + 6) % 6]}`;
+  return el;
+}
+
+async function chooseProfile(id) {
+  S.state = await api('profile', { id });
+  resetCatalogs();
+  shell();
+  route();
+}
+
+/** „Wer schaut?“ – Profile kommen aus der App (Einstellungen → Profile) und werden per QR-Code übernommen. */
+function showProfiles() {
+  player.close(true);
+  const list = h('div', { class: 'profiles' });
+  for (const p of S.state.profiles) {
+    list.append(h('button', { class: 'profile' + (p.id === S.state.profile ? ' current' : ''), onclick: () => chooseProfile(p.id) },
+      avatar(p, 96), h('span', null, profileName(p))));
+  }
+  $app.replaceChildren(h('div', { class: 'login' }, h('div', { class: 'card wide' },
+    h('h1', { style: 'text-align:center;margin-top:0' }, 'Wer schaut?'), list,
+    h('p', { class: 'dim small', style: 'text-align:center' }, 'Profile legst du in der Klar-TV-App an und überträgst sie per QR-Code.'))));
+  setTimeout(() => list.querySelector('.current, .profile')?.focus(), 50);
 }
 
 function showLogin() {
@@ -332,6 +365,10 @@ let $main;
 function shell() {
   $main = h('main', { class: 'main' });
   const rail = h('nav', { class: 'rail' }, h('div', { class: 'logo', icon: 'logo' }));
+  const me = (S.state.profiles || []).find((p) => p.id === S.state.profile);
+  if (me && S.state.profiles.length > 1) {
+    rail.append(h('button', { class: 'nav me', title: 'Profil wechseln', onclick: showProfiles }, avatar(me, 28), h('span', null, profileName(me))));
+  }
   NAV.forEach(([id, icon, label], i) => {
     if (i === NAV.length - 1) rail.append(h('div', { class: 'spacer' }));
     rail.append(h('a', { class: 'nav', href: '#' + id, 'data-nav': id, icon }, label));
@@ -860,6 +897,52 @@ function serverCards(st) {
         if (r.restart) pmsg.replaceChildren(h('div', { class: 'msg ok' }, `Der Server startet neu und ist gleich unter Port ${port.value} erreichbar.`));
       } catch (e) { pmsg.replaceChildren(h('div', { class: 'msg error' }, e.message)); }
     } }, 'Port ändern')));
+  updateCard();
+}
+
+// Updates: der Server holt neue Versionen selbst und installiert sie nachts
+async function updateCard() {
+  const box = h('div', { class: 'card' }, h('h2', { style: 'margin-top:0' }, 'Updates'));
+  $main.append(box);
+  let u;
+  try { u = await api('update'); } catch (e) { return; }
+  const draw = (u) => {
+    box.replaceChildren(h('h2', { style: 'margin-top:0' }, 'Updates'));
+    if (!u.available) { box.append(h('p', { class: 'dim' }, 'Nur der installierte Dienst aktualisiert sich selbst.')); return; }
+    let text = `Installiert: ${u.version}.`;
+    if (u.state === 'checking') text += ' Suche nach Updates …';
+    else if (u.state === 'downloading') text += ` Version ${u.latest} wird geladen …`;
+    else if (u.state === 'ready') text += ` Version ${u.latest} ist geladen und geprüft${u.auto ? ' und wird zwischen 3 und 5 Uhr installiert, wenn niemand schaut' : ''}.`;
+    else if (u.state === 'installing') text += ` Version ${u.latest} wird installiert. Der Server ist gleich wieder da.`;
+    else if (u.state === 'error') text += ` Fehler: ${u.error}`;
+    else if (u.lastCheck) text += ` Aktuell, zuletzt geprüft ${new Date(u.lastCheck).toLocaleString('de-DE')}.`;
+    const auto = h('input', { type: 'checkbox', checked: u.auto });
+    auto.onchange = async () => draw(await api('update/settings', { auto: auto.checked }));
+    box.append(h('p', { class: 'dim' }, text),
+      h('label', { class: 'row', style: 'gap:8px;margin-bottom:12px' }, auto, h('span', null, 'Automatisch aktualisieren (prüft alle sechs Stunden bei GitHub, installiert nur signierte Versionen)')),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', disabled: u.state === 'checking' || u.state === 'downloading' || u.state === 'installing', onclick: async () => {
+          draw(await api('update/check', {}));
+          poll();
+        } }, 'Jetzt nach Updates suchen'),
+        u.state === 'ready' ? h('button', { class: 'btn primary', onclick: async () => {
+          if (!confirm(`Version ${u.latest} jetzt installieren? Laufende Wiedergaben brechen ab, der Server ist nach etwa einer Minute wieder da.`)) return;
+          await api('update/install', {});
+          draw(Object.assign({}, u, { state: 'installing' }));
+        } }, 'Jetzt installieren') : null));
+  };
+  // Solange gesucht oder geladen wird, nachschauen
+  const poll = async () => {
+    for (let i = 0; i < 120 && box.isConnected; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const n = await api('update').catch(() => null);
+      if (!n) return;
+      draw(n);
+      if (n.state !== 'checking' && n.state !== 'downloading') return;
+    }
+  };
+  draw(u);
+  if (u.state === 'checking' || u.state === 'downloading') poll();
 }
 
 function accountDialog(a) {

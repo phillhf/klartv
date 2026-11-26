@@ -97,6 +97,9 @@ class Media(private val tools: File) {
 
     private val running = ConcurrentHashMap<String, Process>()
 
+    /** Schaut gerade jemand? Dann wartet ein Update. */
+    val busy: Boolean get() = running.values.any { it.isAlive }
+
     /** Beendet, was diese Sitzung gerade abspielt; viele Anbieter erlauben nur eine Verbindung. */
     fun stop(owner: String) {
         running.remove(owner)?.let { kill(it) }

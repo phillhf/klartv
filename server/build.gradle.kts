@@ -23,6 +23,7 @@ kotlin {
             "io/github/phillhf/iptv/LocalHost.kt",
             "io/github/phillhf/iptv/platform/**",
             "io/github/phillhf/iptv/server/**",
+            "io/github/phillhf/iptv/update/**",
         )
         kotlin.exclude("**/Reminders.kt")
     }

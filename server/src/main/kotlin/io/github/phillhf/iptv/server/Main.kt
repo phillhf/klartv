@@ -64,7 +64,9 @@ fun main(args: Array<String>) {
 
     val core = Core(context)
     val media = Media(toolsDir())
-    val web = Web(core, Auth(context), media, Images(File(dir, "bilder"), allowLocal = System.getProperty("klartv.localImages") == "true"), config)
+    // Nur der installierte Dienst aktualisiert sich selbst, nicht ein Testlauf aus dem Quelltext
+    val update = if (System.getProperty("klartv.noUpdate") == null && System.getProperty("compose.application.resources.dir") != null) AutoUpdate(context, dir) { media.busy } else null
+    val web = Web(core, Auth(context), media, Images(File(dir, "bilder"), allowLocal = System.getProperty("klartv.localImages") == "true"), config, update)
     try {
         web.start(port, bind)
     } catch (e: Exception) {
@@ -73,6 +75,7 @@ fun main(args: Array<String>) {
     }
     log.info("Klar TV Server $appVersion läuft auf Port $port, Daten in $dir, FFmpeg ${if (media.available) "da" else "fehlt"}")
     println("Klar TV Server $appVersion: http://localhost:$port")
+    update?.start()
     Runtime.getRuntime().addShutdownHook(Thread { web.stop() })
 }
 

@@ -11,6 +11,8 @@ import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Http
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Library
+import io.github.phillhf.iptv.data.Profile
+import io.github.phillhf.iptv.data.ProfileStore
 import io.github.phillhf.iptv.data.M3uBackend
 import io.github.phillhf.iptv.data.SeriesInfo
 import io.github.phillhf.iptv.data.SourceType
@@ -117,7 +119,13 @@ class Core(val context: AppContext) {
 
     private fun requireBackend(): Backend = backend ?: throw IOException("Noch kein Anbieter eingerichtet.")
 
-    fun library(): Library? = active?.let { Library(context, it.id) }
+    /** Profile wie in der App; "" ist das erste. */
+    fun profiles(): List<Profile> = ProfileStore(context).all()
+
+    /** Daten des Kontos für dieses Profil; ein unbekanntes Profil fällt auf das erste zurück. */
+    fun library(profile: String = ""): Library? = active?.let { a ->
+        Library(context, a.id, profile.takeIf { p -> profiles().any { it.id == p } } ?: "")
+    }
 
     // ---------- Listen ----------
 
@@ -177,7 +185,7 @@ class Core(val context: AppContext) {
     /** Was abgespielt werden soll, als Verweis aus der Weboberfläche. Die Adresse des Anbieters bleibt hier. */
     data class Target(val url: String, val live: Boolean, val durationMs: Long = 0)
 
-    fun resolve(ref: String): Target? {
+    fun resolve(ref: String, profile: String = ""): Target? {
         val parts = ref.split(':')
         return when (parts[0]) {
             "LIVE" -> stream(ref)?.let { Target(it.url, live = true) }
@@ -194,7 +202,7 @@ class Core(val context: AppContext) {
                 requireBackend().catchupUrl(s, start, end)?.let { Target(it, live = false, durationMs = end - start) }
             }
             // Aus „Weiterschauen“, auch von einem anderen Gerät
-            "CONT" -> library()?.continueList()?.firstOrNull { it.key == ref.removePrefix("CONT:") }?.let { Target(it.url, live = false) }
+            "CONT" -> library(profile)?.continueList()?.firstOrNull { it.key == ref.removePrefix("CONT:") }?.let { Target(it.url, live = false) }
             else -> null
         }
     }
@@ -300,13 +308,13 @@ class Core(val context: AppContext) {
     // ---------- Weiterschauen ----------
 
     /** Speichert die Position wie der Player der App; die Adresse kommt vom Server, nicht aus dem Browser. */
-    fun saveProgress(ref: String, parentKey: String, title: String, subtitle: String?, image: String?, position: Long, duration: Long) {
-        val lib = library() ?: return
+    fun saveProgress(ref: String, parentKey: String, title: String, subtitle: String?, image: String?, position: Long, duration: Long, profile: String = "") {
+        val lib = library(profile) ?: return
         val key = keyOf(ref) ?: return
         when {
             duration > 120_000 && position > duration - 60_000 -> lib.finished(key)
             position > 5_000 -> {
-                val url = resolve(ref)?.url ?: return
+                val url = resolve(ref, profile)?.url ?: return
                 lib.savePosition(key, position)
                 lib.updateContinue(ContinueEntry(key, parentKey, title, subtitle, image, url, position, duration))
             }

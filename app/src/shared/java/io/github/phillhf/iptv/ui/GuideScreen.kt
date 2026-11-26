@@ -304,7 +304,7 @@ private fun Cell(s: Stream, c: GuideCell, now: Long, x: Dp, scroll: ScrollState,
         }
         Row(stick, verticalAlignment = Alignment.CenterVertically) {
             if (replay) Icon(Icons.Filled.Replay, contentDescription = t("Nachschauen möglich"), tint = Klar.Accent, modifier = Modifier.height(16.dp).padding(end = 4.dp))
-            if (Reminders.list.any { it.channel == s.key && it.start == e.start }) {
+            if (Reminders.find(s.key, e.start) != null) {
                 Icon(Icons.Filled.NotificationsActive, contentDescription = t("Erinnerung"), tint = Klar.Gold, modifier = Modifier.height(16.dp).padding(end = 4.dp))
             }
             Text(

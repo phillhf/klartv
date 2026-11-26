@@ -17,6 +17,7 @@ import io.github.phillhf.iptv.ui.HomeScreen
 import io.github.phillhf.iptv.ui.MovieScreen
 import io.github.phillhf.iptv.ui.MultiViewScreen
 import io.github.phillhf.iptv.ui.PinRequest
+import io.github.phillhf.iptv.ui.ProfilePicker
 import io.github.phillhf.iptv.ui.ReminderPopup
 import io.github.phillhf.iptv.ui.SeriesScreen
 import io.github.phillhf.iptv.ui.SyncScreen
@@ -30,6 +31,9 @@ internal fun App(vm: AppViewModel) {
                 SyncScreen(vm)
             } else if (vm.active == null) {
                 AddAccountScreen(vm, onCancel = null)
+            } else if (vm.choosingProfile) {
+                BackHandler(enabled = true) { vm.chooseProfile(vm.profileId) }
+                ProfilePicker(vm)
             } else {
                 BackHandler(enabled = vm.stack.size > 1) { vm.back() }
                 when (val top = vm.stack.last()) {

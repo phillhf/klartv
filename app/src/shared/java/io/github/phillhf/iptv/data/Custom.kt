@@ -96,14 +96,16 @@ data class Reminder(
     val channelName: String,
     val title: String,
     val start: Long,
+    /** Wer sie gestellt hat; "" = erstes Profil. Fällig wird sie für alle. */
+    val profile: String = "",
 ) {
     fun toJson(): JSONObject = JSONObject().put("id", id).put("account", account).put("channel", channel)
-        .put("channelName", channelName).put("title", title).put("start", start)
+        .put("channelName", channelName).put("title", title).put("start", start).put("profile", profile)
 
     companion object {
         fun fromJson(o: JSONObject) = Reminder(
             o.getString("id"), o.getString("account"), o.getString("channel"), o.optString("channelName"),
-            o.optString("title"), o.getLong("start"),
+            o.optString("title"), o.getLong("start"), o.optString("profile"),
         )
     }
 }

@@ -87,3 +87,14 @@ fun ListScrollbar(state: LazyGridState, modifier: Modifier = Modifier) = Unit
 
 @Composable
 fun ServerPermission(server: String?) = LocalNetworkPermission(server)
+
+/** Android aktualisiert über den Play Store oder eine neue APK; nur Windows sucht selbst nach Updates. */
+object AppUpdates {
+    const val supported = false
+    val auto: Boolean get() = false
+    val status: String get() = ""
+
+    fun changeAuto(@Suppress("UNUSED_PARAMETER") on: Boolean) = Unit
+
+    fun checkNow() = Unit
+}

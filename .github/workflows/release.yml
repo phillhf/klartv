@@ -89,6 +89,21 @@ jobs:
           ./gradlew assembleMobileRelease assembleCarRelease
           ./gradlew bundleMobileRelease bundleCarRelease
 
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: windows-setup
+          path: ${{ runner.temp }}/windows
+
+      # App und Server installieren ein Update nur, wenn diese Signatur passt
+      - name: Windows-Setups signieren
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          java tools/UpdateSign.java sign "$RELEASE_KEYSTORE_FILE" "$RELEASE_KEY_ALIAS" "$RUNNER_TEMP"/windows/*.exe
+          java tools/UpdateSign.java verify "$RUNNER_TEMP"/windows/*.exe
+
       - name: Schlüsseldatei entfernen
         if: always()
         run: rm -f "$RUNNER_TEMP/upload.jks"
@@ -114,11 +129,6 @@ jobs:
           done
           [ "$count" -ge 5 ]
 
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: windows-setup
-          path: ${{ runner.temp }}/windows
-
       - name: Release veröffentlichen
         env:
           GH_TOKEN: ${{ github.token }}
@@ -132,5 +142,6 @@ jobs:
           cp "$apk-armeabi-v7a-release.apk" "KlarTV-$VERSION-Fernseher-TV-Stick.apk"
           cp "$RUNNER_TEMP/windows/KlarTV-$VERSION-Windows-Setup.exe" .
           cp "$RUNNER_TEMP/windows/KlarTV-$VERSION-Windows-Server-Setup.exe" .
+          cp "$RUNNER_TEMP"/windows/*.sig .
           sed "s/@V@/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes --notes-file "$RUNNER_TEMP/notes.md" KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk KlarTV-"$VERSION"*.exe
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Klar TV $VERSION" --generate-notes --notes-file "$RUNNER_TEMP/notes.md" KlarTV-"$VERSION"*.aab KlarTV-"$VERSION"*.apk KlarTV-"$VERSION"*.exe KlarTV-"$VERSION"*.exe.sig

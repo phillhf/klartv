@@ -34,6 +34,7 @@ class Web(
     private val media: Media,
     private val images: Images,
     private val config: Config,
+    private val update: AutoUpdate? = null,
 ) {
     private val log = Logger.getLogger("Web")
     private lateinit var server: HttpServer
@@ -294,12 +295,12 @@ class Web(
                     o.put("plot", i.plot).put("genre", i.genre).put("year", i.year).put("duration", i.duration).put("cover", i.cover)
                         .put("backdrop", i.backdrop).put("cast", i.cast).put("director", i.director).put("rating", i.rating)
                 }
-                o.put("position", core.library()?.position("MOVIE:" + r.q("id")) ?: 0L)
+                o.put("position", core.library(session.profile)?.position("MOVIE:" + r.q("id")) ?: 0L)
                 send(ex, 200, o)
             }
             "series" -> {
                 val i = core.seriesInfo(r.q("id"))
-                val lib = core.library()
+                val lib = core.library(session.profile)
                 val watched = lib?.watched().orEmpty()
                 val seasons = JSONArray()
                 i.seasons.toSortedMap().forEach { (no, eps) ->
@@ -323,19 +324,19 @@ class Web(
                 )
             }
             "favorite" -> {
-                val lib = core.library() ?: throw BadRequest("Kein Anbieter")
+                val lib = core.library(session.profile) ?: throw BadRequest("Kein Anbieter")
                 send(ex, 200, JSONObject().put("favorites", JSONArray(lib.toggleFavorite(r.body().getString("key")))))
             }
             "progress" -> {
                 val b = r.body()
                 core.saveProgress(
                     b.getString("ref"), b.optString("parent"), b.optString("title"), b.optString("subtitle").ifBlank { null },
-                    b.optString("image").ifBlank { null }, b.optLong("position"), b.optLong("duration"),
+                    b.optString("image").ifBlank { null }, b.optLong("position"), b.optLong("duration"), session.profile,
                 )
                 send(ex, 200, ok())
             }
             "watched" -> {
-                val lib = core.library() ?: throw BadRequest("Kein Anbieter")
+                val lib = core.library(session.profile) ?: throw BadRequest("Kein Anbieter")
                 val b = r.body()
                 val keys = b.getJSONArray("keys").let { a -> (0 until a.length()).map { a.getString(it) } }
                     .filter { it.startsWith("MOVIE:") || it.startsWith("EP:") }
@@ -343,16 +344,16 @@ class Web(
                 send(ex, 200, ok())
             }
             "continue/remove" -> {
-                core.library()?.removeContinue(r.body().getString("key"))
+                core.library(session.profile)?.removeContinue(r.body().getString("key"))
                 send(ex, 200, ok())
             }
             "probe" -> {
                 if (!media.available) throw BadRequest("FFmpeg fehlt. Bitte den Server neu installieren.", 500)
-                val t = core.resolve(r.q("ref")) ?: throw BadRequest(notFound(r.q("ref")), 404)
+                val t = core.resolve(r.q("ref"), session.profile) ?: throw BadRequest(notFound(r.q("ref")), 404)
                 val p = media.probe(t.url, t.live)
                 val o = p.toJson().put("live", t.live).put("chosen", media.pickAudio(p, null) ?: -1)
                 if (t.durationMs > 0 && p.durationMs == 0L) o.put("duration", t.durationMs)
-                core.keyOf(r.q("ref"))?.let { k -> o.put("position", core.library()?.position(k) ?: 0L) }
+                core.keyOf(r.q("ref"))?.let { k -> o.put("position", core.library(session.profile)?.position(k) ?: 0L) }
                 send(ex, 200, o)
             }
             "unlock" -> {
@@ -424,6 +425,34 @@ class Web(
                     }.start()
                 }
             }
+            "profile" -> {
+                val id = r.body().optString("id")
+                if (core.profiles().none { it.id == id }) throw BadRequest("Unbekanntes Profil")
+                session.profile = id
+                session.profileChosen = true
+                send(ex, 200, state(session))
+            }
+            "update" -> send(ex, 200, updateState())
+            "update/settings" -> {
+                val u = update ?: throw BadRequest("Nicht verfügbar", 404)
+                if (r.body().has("auto")) u.auto = r.body().getBoolean("auto")
+                send(ex, 200, updateState())
+            }
+            "update/check" -> {
+                val u = update ?: throw BadRequest("Nicht verfügbar", 404)
+                Thread { u.check() }.start()
+                Thread.sleep(300)
+                send(ex, 200, updateState())
+            }
+            "update/install" -> {
+                val u = update ?: throw BadRequest("Nicht verfügbar", 404)
+                if (u.state != "ready") throw BadRequest("Kein geprüftes Update bereit.")
+                send(ex, 200, ok())
+                Thread {
+                    Thread.sleep(1000)
+                    u.install()
+                }.start()
+            }
             "sync/start" -> {
                 sync?.stop()
                 val host = SyncHost(core.context, "Klar TV Server")
@@ -481,9 +510,15 @@ class Web(
 
     private fun kind(name: String) = runCatching { Kind.valueOf(name) }.getOrElse { throw BadRequest("Unbekannte Art") }
 
+    private fun updateState(): JSONObject {
+        val u = update ?: return JSONObject().put("available", false).put("version", appVersion)
+        return JSONObject().put("available", true).put("version", appVersion).put("auto", u.auto).put("latest", u.latest)
+            .put("state", u.state).put("error", u.error).put("lastCheck", u.lastCheck)
+    }
+
     private fun state(session: Auth.Session): JSONObject {
         val a = core.active
-        val lib = core.library()
+        val lib = core.library(session.profile)
         val o = JSONObject()
             .put("version", appVersion)
             .put("user", auth.user)
@@ -501,6 +536,9 @@ class Web(
             .put("liveFormat", core.liveFormat)
             .put("epg", core.epgStatus)
             .put("port", config.port)
+            .put("profile", session.profile)
+            .put("chooseProfile", !session.profileChosen && core.profiles().size > 1)
+            .put("profiles", JSONArray(core.profiles().map { p -> JSONObject().put("id", p.id).put("name", p.name).put("color", p.color) }))
         if (lib != null) {
             o.put("favorites", JSONArray(lib.favorites()))
             val watched = lib.watched()
@@ -561,12 +599,12 @@ class Web(
         val session = auth.session(r.cookie) ?: throw BadRequest("Bitte anmelden.", 401)
         if (!media.available) throw BadRequest("FFmpeg fehlt.", 500)
         val ref = r.q("ref")
-        val t = core.resolve(ref) ?: throw BadRequest(notFound(ref), 404)
+        val t = core.resolve(ref, session.profile) ?: throw BadRequest(notFound(ref), 404)
         val probe = media.probe(t.url, t.live)
         val audio = media.pickAudio(probe, r.query["a"]?.toIntOrNull())
         // Zuletzt gesehen: bei Folgen die Serie
-        r.query["recent"]?.takeIf { it.isNotBlank() }?.let { core.library()?.addRecent(it) }
-            ?: if (ref.startsWith("LIVE:") || ref.startsWith("MOVIE:")) core.library()?.addRecent(ref) else Unit
+        r.query["recent"]?.takeIf { it.isNotBlank() }?.let { core.library(session.profile)?.addRecent(it) }
+            ?: if (ref.startsWith("LIVE:") || ref.startsWith("MOVIE:")) core.library(session.profile)?.addRecent(ref) else Unit
         r.ex.responseHeaders["Content-Type"] = "video/mp2t"
         r.ex.responseHeaders["Cache-Control"] = "no-store"
         r.ex.sendResponseHeaders(200, 0)

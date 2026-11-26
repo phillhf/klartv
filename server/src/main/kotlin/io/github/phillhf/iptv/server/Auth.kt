@@ -17,7 +17,11 @@ class Auth(context: AppContext) {
     private val prefs = context.openPrefs("server")
     private val random = SecureRandom()
 
-    class Session(val token: String, var lastUsed: Long, @Volatile var unlocked: Boolean = false)
+    class Session(val token: String, var lastUsed: Long, @Volatile var unlocked: Boolean = false) {
+        /** Gewähltes Profil; nach einem Neustart des Servers wird wieder gefragt. */
+        @Volatile var profile: String = ""
+        @Volatile var profileChosen: Boolean = false
+    }
 
     private val sessions = ConcurrentHashMap<String, Session>()
 

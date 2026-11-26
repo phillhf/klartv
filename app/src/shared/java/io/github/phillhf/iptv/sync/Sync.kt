@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.phillhf.iptv.data.AccountStore
+import io.github.phillhf.iptv.data.Library
+import io.github.phillhf.iptv.data.ProfileStore
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.openPrefs
 import io.github.phillhf.iptv.platform.Prefs
@@ -40,8 +42,11 @@ object SyncData {
     /** Gehört zum Gerät und bleibt beim Abgleich, wie es ist. */
     private val deviceOnly = setOf("matchFrameRate", "storeTarget")
 
-    private fun names(context: AppContext): List<String> =
-        listOf("settings", "accounts") + AccountStore(context).all().map { "library_${it.id}" }
+    private fun names(context: AppContext): List<String> {
+        val profiles = ProfileStore(context).all()
+        return listOf("settings", "accounts", "profiles") +
+            AccountStore(context).all().flatMap { a -> profiles.map { p -> Library.prefsName(a.id, p.id) } }
+    }
 
     private fun encode(p: Prefs, skip: Set<String> = emptySet()): JSONObject {
         val o = JSONObject()
@@ -79,7 +84,7 @@ object SyncData {
         if (root.optInt("version") != 1) throw IOException(t("Die andere App ist zu alt oder zu neu. Bitte beide aktualisieren."))
         val prefs = root.getJSONObject("prefs")
         val before = names(context)
-        val incoming = prefs.keys().asSequence().toList().filter { it == "settings" || it == "accounts" || it.startsWith("library_") }
+        val incoming = prefs.keys().asSequence().toList().filter { it == "settings" || it == "accounts" || it == "profiles" || it.startsWith("library_") }
         for (n in incoming) {
             val p = context.openPrefs(n)
             val keep = if (n == "settings") p.all.filterKeys { it in deviceOnly } else emptyMap()

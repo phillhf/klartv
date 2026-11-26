@@ -43,9 +43,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.phillhf.iptv.data.AppSettings
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.platform.AppContext
+import io.github.phillhf.iptv.platform.AppUpdates
 import io.github.phillhf.iptv.platform.BackStack
 import io.github.phillhf.iptv.platform.Win32
 import io.github.phillhf.iptv.platform.appIcon
+import io.github.phillhf.iptv.platform.appVersion
 import io.github.phillhf.iptv.platform.openPrefs
 import io.github.phillhf.iptv.player.PlayerHost
 import io.github.phillhf.iptv.player.PlayerSession
@@ -88,6 +90,7 @@ internal fun runApp() {
     Reminders.init(context)
     installImageLoader()
     Reminders.rearm()
+    AppUpdates.start()
     application {
         val prefs = remember { context.openPrefs("window") }
         val state = rememberWindowState(
@@ -154,6 +157,27 @@ internal fun runApp() {
             }
             KlarTheme {
                 Root(vm)
+                // Neue Version: fragen, aber nicht mitten in der Wiedergabe
+                AppUpdates.offer?.takeIf { PlayerHost.session == null }?.let { r ->
+                    val loading = AppUpdates.progress >= 0
+                    AlertDialog(
+                        onDismissRequest = { if (!loading) AppUpdates.later() },
+                        containerColor = Klar.Surface,
+                        title = { Text(t("Klar TV %1 ist da", r.version)) },
+                        text = {
+                            Text(
+                                when {
+                                    loading -> t("Lade Update … %1 %", AppUpdates.progress)
+                                    AppUpdates.failure != null -> AppUpdates.failure!!
+                                    else -> t("Installiert ist %1. Das Update dauert etwa eine Minute, danach startet Klar TV neu.", appVersion) +
+                                        if (Transfers.busy) "\n\n" + t("Ein Download oder eine Aufnahme läuft noch und wird dabei beendet.") else ""
+                                },
+                            )
+                        },
+                        confirmButton = { TextButton(enabled = !loading, onClick = { AppUpdates.install(quit) }) { Text(t("Jetzt installieren")) } },
+                        dismissButton = { TextButton(enabled = !loading, onClick = { AppUpdates.later() }) { Text(t("Später")) } },
+                    )
+                }
                 if (asking) {
                     AlertDialog(
                         onDismissRequest = { asking = false },

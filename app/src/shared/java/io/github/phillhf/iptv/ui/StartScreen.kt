@@ -376,6 +376,7 @@ private fun PhoneHeader(vm: AppViewModel, modifier: Modifier = Modifier) {
         Text("Klar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         Text(" TV", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Klar.Accent)
         Spacer(Modifier.weight(1f))
+        ProfileButton(vm, size = 28.dp)
         IconButton(onClick = { vm.tab = Tab.GUIDE }) { Icon(Icons.Filled.CalendarViewDay, contentDescription = t("Programm")) }
         IconButton(onClick = { vm.tab = Tab.MEDIA }) { Icon(Icons.Filled.Folder, contentDescription = t("Mediathek")) }
         IconButton(onClick = { vm.tab = Tab.FAVORITES }) { Icon(Icons.Filled.Star, contentDescription = t("Favoriten")) }

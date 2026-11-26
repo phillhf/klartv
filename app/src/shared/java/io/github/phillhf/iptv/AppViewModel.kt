@@ -25,6 +25,8 @@ import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Library
 import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.M3uBackend
+import io.github.phillhf.iptv.data.Profile
+import io.github.phillhf.iptv.data.ProfileStore
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.SeriesInfo
 import io.github.phillhf.iptv.data.SourceType
@@ -76,6 +78,18 @@ sealed interface EpgState {
 
 class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     private val store = AccountStore(app)
+    private val profileStore = ProfileStore(app)
+
+    /** Profile im Haushalt; das erste (ID "") gibt es immer. */
+    var profiles by mutableStateOf(profileStore.all())
+        private set
+    var profileId by mutableStateOf(profileStore.activeId)
+        private set
+    val profile: Profile get() = profiles.firstOrNull { it.id == profileId } ?: profiles.first()
+
+    /** Beim Start fragen, wer schaut, sobald es mehr als ein Profil gibt. */
+    var choosingProfile by mutableStateOf(profiles.size > 1)
+        private set
 
     /** Woher die Daten kommen. Screenshots setzen hier eine Beispiel-Quelle ein. */
     internal var backendFor: (Account) -> Backend = { a ->
@@ -186,6 +200,8 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         liveFormat = store.liveFormat
         livePreview = store.livePreview
         accounts = store.all()
+        profiles = profileStore.all()
+        profileId = profileStore.activeId
         val a = accounts.firstOrNull { it.id == store.activeId } ?: accounts.firstOrNull()
         if (a != null) {
             activate(a, backendFor(a))
@@ -231,17 +247,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         backend = b
         active = a
         store.activeId = a.id
-        library = Library(app, a.id).also {
-            favorites = it.favorites()
-            recent = it.recent()
-            continueList = it.continueList()
-            watched = it.watched()
-            seriesEpisodes = it.seriesEpisodes()
-            locked = it.lockedCategories()
-            custom = it.custom()
-            covers.clear()
-            covers.putAll(it.covers())
-        }
+        loadLibrary(a)
         coverStage.clear()
         customView.clear()
         tab = Tab.START
@@ -256,6 +262,75 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
                 null
             }
         }
+    }
+
+    /** Persönliches des Profils für dieses Konto einlesen; Sperren und Senderordnung gelten für alle Profile. */
+    private fun loadLibrary(a: Account) {
+        Reminders.profile = profileId
+        library = Library(app, a.id, profileId).also {
+            favorites = it.favorites()
+            recent = it.recent()
+            continueList = it.continueList()
+            watched = it.watched()
+            seriesEpisodes = it.seriesEpisodes()
+            locked = it.lockedCategories()
+            custom = it.custom()
+            covers.clear()
+            covers.putAll(it.covers())
+        }
+    }
+
+    // ---------- Profile ----------
+
+    fun openProfiles() {
+        choosingProfile = true
+    }
+
+    fun chooseProfile(id: String) {
+        choosingProfile = false
+        if (id == profileId || profiles.none { it.id == id }) return
+        profileId = id
+        profileStore.activeId = id
+        Reminders.profile = id
+        active?.let { a ->
+            loadLibrary(a)
+            customView.clear()
+        }
+        tab = Tab.START
+        stack.clear()
+        stack.add(Screen.Home)
+    }
+
+    fun addProfile(name: String): Profile {
+        val p = Profile(java.util.UUID.randomUUID().toString().take(8), name.trim().take(30), profiles.size % PROFILE_COLORS)
+        profiles = profiles + p
+        profileStore.save(profiles)
+        return p
+    }
+
+    fun renameProfile(id: String, name: String) {
+        profiles = profiles.map { if (it.id == id) it.copy(name = name.trim().take(30)) else it }
+        profileStore.save(profiles)
+    }
+
+    /** Das erste Profil bleibt; die anderen gehen mit Favoriten, Verlauf und Gesehen weg. */
+    fun deleteProfile(id: String) {
+        if (id.isEmpty()) return
+        profiles = profiles.filter { it.id != id }
+        profileStore.save(profiles)
+        Library.deleteProfile(app, id, accounts)
+        Reminders.removeProfile(id)
+        if (profileId == id) {
+            profileId = ""
+            profileStore.activeId = ""
+            chooseProfileReload()
+        }
+    }
+
+    private fun chooseProfileReload() {
+        Reminders.profile = profileId
+        active?.let { loadLibrary(it) }
+        customView.clear()
     }
 
     fun select(a: Account) {
@@ -279,7 +354,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     fun deleteAccount(a: Account) {
         accounts = accounts.filter { it.id != a.id }
         store.save(accounts)
-        Library.delete(app, a.id)
+        Library.delete(app, a.id, profiles)
         viewModelScope.launch(Dispatchers.IO) { runCatching { epgDb.remove(a.id) } }
         if (active?.id == a.id) {
             val next = accounts.firstOrNull()
@@ -464,7 +539,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
 
     fun remind(s: Stream, e: EpgEntry) {
         val a = active ?: return
-        Reminders.add(a.id, s, e)
+        Reminders.add(a.id, profileId, s, e)
     }
 
     fun watchChannel(account: String, key: String) {
@@ -971,3 +1046,6 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
     }
 }
+
+/** So viele Farben gibt es für Profile (ui/Profiles.kt). */
+const val PROFILE_COLORS = 6

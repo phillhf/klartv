@@ -70,6 +70,7 @@ import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.OpenSubtitles
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.data.Tmdb
+import io.github.phillhf.iptv.platform.AppUpdates
 import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.platform.appVersion
 import io.github.phillhf.iptv.platform.canPickFolder
@@ -130,6 +131,8 @@ fun SettingsScreen(vm: AppViewModel) {
                 Action(Icons.Filled.Refresh, t("Inhalte neu laden")) { vm.reload() }
             }
         }
+
+        Section(t("Profile")) { ProfileSettings(vm) }
 
         Section(t("Programmführer")) {
             Dim(
@@ -247,6 +250,18 @@ fun SettingsScreen(vm: AppViewModel) {
             KeyStatus(AppSettings.tmdbKey) { Tmdb.check() }
             TextSetting(t("OpenSubtitles-Schlüssel (Untertitelsuche)"), AppSettings.openSubtitlesKey, secret = true) { AppSettings.openSubtitlesKey = it.trim() }
             KeyStatus(AppSettings.openSubtitlesKey) { OpenSubtitles.check() }
+        }
+
+        if (AppUpdates.supported) {
+            Section(t("Updates")) {
+                SwitchRow(
+                    t("Automatisch nach Updates suchen"),
+                    t("Schaut beim Start bei GitHub nach einer neuen Version und fragt, ob sie installiert werden soll. Installiert wird nur, was echt signiert ist."),
+                    AppUpdates.auto,
+                ) { AppUpdates.changeAuto(it) }
+                if (AppUpdates.status.isNotEmpty()) Dim(AppUpdates.status)
+                Action(null, t("Jetzt nach Updates suchen")) { AppUpdates.checkNow() }
+            }
         }
 
         Section(t("Über die App")) {
