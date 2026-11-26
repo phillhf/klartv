@@ -420,7 +420,7 @@ private fun <T> Options(choices: List<Pair<T, String>>, selected: T, onSelect: (
     }
 }
 
-private fun languageChoices() = listOf("" to t("Egal")) + I18n.languages
+private fun languageChoices() = listOf("" to t("Egal")) + I18n.languages + listOf("pt" to "Português", "pl" to "Polski", "ar" to "العربية")
 
 @Composable
 private fun Palettes() {

@@ -88,13 +88,6 @@ class Media(private val tools: File) {
             "es" -> setOf("es", "spa")
             "it" -> setOf("it", "ita")
             "tr" -> setOf("tr", "tur")
-            "pt" -> setOf("pt", "por")
-            "nl" -> setOf("nl", "nld", "dut")
-            "pl" -> setOf("pl", "pol")
-            "ro" -> setOf("ro", "ron", "rum")
-            "sq" -> setOf("sq", "sqi", "alb")
-            "ru" -> setOf("ru", "rus")
-            "ar" -> setOf("ar", "ara")
             else -> setOf(lang)
         }
         return (p.audio.firstOrNull { it.language.lowercase() in names } ?: p.audio.first()).index

@@ -16,22 +16,13 @@ import java.util.Locale
 object I18n {
     val languages = listOf(
         "de" to "Deutsch", "en" to "English", "fr" to "Français", "es" to "Español", "it" to "Italiano", "tr" to "Türkçe",
-        "pt" to "Português", "nl" to "Nederlands", "pl" to "Polski", "ro" to "Română", "sq" to "Shqip", "ru" to "Русский", "ar" to "العربية",
     )
 
-    /** Sprachen, die von rechts nach links geschrieben werden. */
-    private val rightToLeft = setOf("ar")
-
     private var table by mutableStateOf<Map<String, String>>(emptyMap())
-
-    /** Die gewählte Sprache läuft von rechts nach links (Arabisch); die Oberfläche spiegelt sich dann. */
-    var rtl by mutableStateOf(false)
-        private set
 
     fun init(context: AppContext) {
         val wanted = AppSettings.language.ifEmpty { Locale.getDefault().language }
         val lang = if (languages.any { it.first == wanted }) wanted else "en"
-        rtl = lang in rightToLeft
         table = when (lang) {
             "de" -> emptyMap()
             "en" -> load(context, "en")

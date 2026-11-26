@@ -6,11 +6,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.platform.BackHandler
 import io.github.phillhf.iptv.platform.LocalAppContext
@@ -26,12 +23,6 @@ import io.github.phillhf.iptv.ui.SyncScreen
 
 @Composable
 internal fun App(vm: AppViewModel) {
-    // Richtung nach der App-Sprache, nicht nach der Systemsprache
-    CompositionLocalProvider(LocalLayoutDirection provides if (I18n.rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) { AppContent(vm) }
-}
-
-@Composable
-private fun AppContent(vm: AppViewModel) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize().safeDrawingPadding()) {
             BackHandler(enabled = vm.syncOpen) { vm.closeSync() }
