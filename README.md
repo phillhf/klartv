@@ -27,7 +27,7 @@ Einrichtung und Cloudflare-Tunnel: [server/README.md](server/README.md).
 - Tonspuren, Untertitel (Größe, Farbe, eigene Dateien), Tempo, Bildformat, Schlaf-Timer, Bild im Bild, Chromecast
 - **Kindersicherung** mit PIN, sortierbare Favoriten, Suche über alles
 - Eigene Videos und Musik aus freigegebenen Ordnern
-- Sechs Designs, sechs Sprachen (Deutsch, Englisch, Französisch, Spanisch, Italienisch, Türkisch)
+- Sechs Designs, 13 Sprachen (Deutsch, Englisch, Französisch, Spanisch, Italienisch, Türkisch, Portugiesisch, Niederländisch, Polnisch, Rumänisch, Albanisch, Russisch, Arabisch mit Ansicht von rechts nach links)
 - Freiwillig mit eigenem Schlüssel: Schauspielerbilder von TMDB, Untertitelsuche bei OpenSubtitles
 
 ## Bauen und Testen

@@ -796,7 +796,7 @@ async function settingsPage(id) {
       h('button', { class: 'btn', onclick: async () => { resetCatalogs(); for (const k of ['LIVE', 'MOVIE', 'SERIES']) await catalog(k, true).catch(() => null); toast('Listen neu geladen.'); } }, 'Listen neu laden'))));
 
   // Wiedergabe
-  const lang = h('select', null, [['de', 'Deutsch'], ['en', 'Englisch'], ['fr', 'Französisch'], ['es', 'Spanisch'], ['it', 'Italienisch'], ['tr', 'Türkisch']]
+  const lang = h('select', null, [['de', 'Deutsch'], ['en', 'Englisch'], ['fr', 'Französisch'], ['es', 'Spanisch'], ['it', 'Italienisch'], ['tr', 'Türkisch'], ['pt', 'Portugiesisch'], ['nl', 'Niederländisch'], ['pl', 'Polnisch'], ['ro', 'Rumänisch'], ['sq', 'Albanisch'], ['ru', 'Russisch'], ['ar', 'Arabisch']]
     .map(([v, t]) => h('option', { value: v, selected: st.audioLanguage === v }, t)));
   const fmt = h('select', null, h('option', { value: 'ts', selected: st.liveFormat !== 'm3u8' }, 'MPEG-TS (empfohlen)'), h('option', { value: 'm3u8', selected: st.liveFormat === 'm3u8' }, 'HLS'));
   const ua = h('input', { type: 'text', value: st.userAgent, placeholder: 'Standard' });
