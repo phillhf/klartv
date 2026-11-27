@@ -52,6 +52,8 @@ de.PortLabel=Port (1024 bis 65535):
 en.PortLabel=Port (1024 to 65535):
 de.BadPort=Bitte einen Port zwischen 1024 und 65535 eingeben.
 en.BadPort=Please enter a port between 1024 and 65535.
+de.BlockedPort=Port %1 sperren Chrome, Edge und Firefox (er gehört zu einem anderen Dienst, z. B. 5060 für Internet-Telefonie). Bitte einen anderen nehmen, z. B. 8095.
+en.BlockedPort=Chrome, Edge and Firefox block port %1 (it belongs to another service, e.g. 5060 for internet telephony). Please choose another one, e.g. 8095.
 de.OpenNow=Weboberfläche jetzt öffnen (Benutzer und Passwort festlegen)
 en.OpenNow=Open the web interface now (set user and password)
 de.Uninstall=Klar TV Server deinstallieren
@@ -114,6 +116,17 @@ begin
         Result := Trim(Copy(Lines[I], 6, 10));
 end;
 
+{ Ports, die Chrome, Edge und Firefox nicht öffnen (Liste der Browser ab 1024) }
+function BlockedByBrowsers(P: Integer): Boolean;
+begin
+  case P of
+    1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080:
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
 function GetPort(Param: String): String;
 begin
   if PortPage <> nil then
@@ -150,6 +163,11 @@ begin
     if (P < 1024) or (P > 65535) then
     begin
       MsgBox(CustomMessage('BadPort'), mbError, MB_OK);
+      Result := False;
+    end
+    else if BlockedByBrowsers(P) then
+    begin
+      MsgBox(FmtMessage(CustomMessage('BlockedPort'), [IntToStr(P)]), mbError, MB_OK);
       Result := False;
     end;
   end;
