@@ -182,7 +182,9 @@ begin
   Data := DataDir();
   ForceDirectories(Data + '\logs');
   { Zugangsdaten und Sitzungen liegen hier: nur Administratoren und das System }
-  Run(ExpandConstant('{sys}\icacls.exe'), '"' + Data + '" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F /T /C /Q', Code);
+  Run(ExpandConstant('{sys}\icacls.exe'), '"' + Data + '" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F /C /Q', Code);
+  { Vorhandene Dateien erben davon. Nicht mit /T oben: Bei Dateien gelten (OI)(CI) nicht, sie hätten danach gar keine Rechte mehr }
+  Run(ExpandConstant('{sys}\icacls.exe'), '"' + Data + '\*" /reset /T /C /Q', Code);
   SaveStringToFile(Data + '\server.properties', 'port=' + GetPort('') + #13#10, False);
   { Nur im Heimnetz und in der Domäne, nie im öffentlichen Netz }
   Run(ExpandConstant('{sys}\netsh.exe'), 'advfirewall firewall delete rule name="Klar TV Server"', Code);
