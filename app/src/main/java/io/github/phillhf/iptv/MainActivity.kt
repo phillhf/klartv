@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         openFrom(intent, androidx.lifecycle.ViewModelProvider(this)[AppViewModel::class.java])
     }
 
-    /** Aus einer Erinnerung: den Sender öffnen. Aus der Kamera-App: abgleichen. */
+    /** Aus einer Erinnerung, vom Startbildschirm oder beim Einschalten: den Sender öffnen. Aus der Kamera-App: abgleichen. */
     private fun openFrom(intent: Intent?, vm: AppViewModel) {
         intent?.data?.toString()?.let { SyncLink.parse(it) }?.let { link ->
             intent.data = null
@@ -47,8 +47,14 @@ class MainActivity : ComponentActivity() {
             vm.openSync(link)
             return
         }
-        val channel = intent?.getStringExtra(CHANNEL) ?: return
-        val account = intent.getStringExtra(ACCOUNT) ?: return
+        val account = intent?.getStringExtra(ACCOUNT) ?: return
+        // Vom Startbildschirm des Fernsehers: weiterschauen
+        intent.getStringExtra(TvHome.CONTINUE)?.let { key ->
+            intent.removeExtra(TvHome.CONTINUE)
+            vm.playFromHome(this, account, key)
+            return
+        }
+        val channel = intent.getStringExtra(CHANNEL) ?: return
         intent.removeExtra(CHANNEL)
         vm.watchChannel(account, channel)
     }

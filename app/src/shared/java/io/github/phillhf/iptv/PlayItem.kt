@@ -26,7 +26,10 @@ data class PlayItem(
     val archive: Boolean = false,
     /** Adresse zum Aufnehmen, wenn sie von der Wiedergabe abweicht. */
     val recordUrl: String? = null,
-)
+) {
+    /** Unter diesem Schlüssel merkt sich der Player den Tonversatz: bei vergangenen Sendungen der Sender. */
+    val delayKey: String get() = if (catchup) recentKey else key
+}
 
 fun Stream.toPlayItem(image: String? = logo) =
     PlayItem(

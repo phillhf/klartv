@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
+import io.github.phillhf.iptv.data.RecordRule
+import io.github.phillhf.iptv.data.RecordRules
 import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.t
 import io.github.phillhf.iptv.transfer.Transfer
@@ -38,6 +40,9 @@ import io.github.phillhf.iptv.transfer.TransferState
 import io.github.phillhf.iptv.transfer.TransferType
 import io.github.phillhf.iptv.transfer.Transfers
 import java.text.DateFormat
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 import java.util.Date
 
 fun formatSize(bytes: Long): String = when {
@@ -57,6 +62,11 @@ fun MediaLibraryScreen(vm: AppViewModel, wide: Boolean) {
         item { SectionTitle(t("Aufnahmen")) }
         if (records.isEmpty()) item { Hint(t("Noch keine Aufnahmen. Starte sie im Player oder im Programm.")) }
         items(records, key = { it.id }) { TransferRow(vm, it) }
+        val rules = RecordRules.list.filter { it.account == vm.active?.id && !vm.hidden(it.channelKey) }
+        if (rules.isNotEmpty()) {
+            item { SectionTitle(t("Serienaufnahmen")) }
+            items(rules, key = { "rule:" + it.id }) { RuleRow(vm, it) }
+        }
         item { SectionTitle(t("Downloads")) }
         if (downloads.isEmpty()) item { Hint(t("Noch keine Downloads. Auf der Seite eines Films oder einer Folge gibt es „Herunterladen“.")) }
         items(downloads, key = { it.id }) { TransferRow(vm, it) }
@@ -120,6 +130,36 @@ private fun TransferRow(vm: AppViewModel, x: Transfer) {
             IconButton(onClick = { Transfers.retry(x) }, modifier = Modifier.focusRing(CircleShape)) { Icon(Icons.Filled.Refresh, t("Fortsetzen")) }
         }
         IconButton(onClick = { Transfers.remove(x) }, modifier = Modifier.focusRing(CircleShape)) { Icon(Icons.Filled.Delete, t("Löschen")) }
+    }
+}
+
+/** „Mo, Di, Fr um 20:15 · 90 Min.“ oder „Jede Sendung „Tatort““. */
+private fun describe(r: RecordRule): String = when (r.type) {
+    RecordRule.Type.TITLE -> t("Jede Sendung „%1“", r.title)
+    RecordRule.Type.SLOT -> {
+        val time = "%02d:%02d".format(r.startMinute / 60, r.startMinute % 60)
+        val days = if ((r.days and RecordRule.ALL_DAYS) == RecordRule.ALL_DAYS) {
+            t("Täglich")
+        } else {
+            DayOfWeek.entries.filter { (r.days and (1 shl (it.value - 1))) != 0 }
+                .joinToString(", ") { it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
+        }
+        t("%1 um %2 · %3 Min.", days, time, r.minutes)
+    }
+}
+
+@Composable
+private fun RuleRow(vm: AppViewModel, r: RecordRule) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Logo(r.logo, r.channelName, 56.dp)
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(r.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+                Text(r.channelName, maxLines = 1, style = MaterialTheme.typography.bodySmall, color = Klar.TextDim)
+                Text(describe(r), maxLines = 2, style = MaterialTheme.typography.bodySmall, color = Klar.TextDim)
+            }
+        }
+        IconButton(onClick = { vm.removeRecordRule(r) }, modifier = Modifier.focusRing(CircleShape)) { Icon(Icons.Filled.Delete, t("Serienaufnahme beenden")) }
     }
 }
 

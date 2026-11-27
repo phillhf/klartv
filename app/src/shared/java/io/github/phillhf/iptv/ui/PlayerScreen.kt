@@ -87,6 +87,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.phillhf.iptv.AUDIO_DELAY_STEP
 import io.github.phillhf.iptv.PlayerActions
 import io.github.phillhf.iptv.PlayerPanel
 import io.github.phillhf.iptv.PlayerUi
@@ -323,6 +324,13 @@ fun LabelButton(icon: ImageVector, label: String, tint: Color = Color.White, onC
     }
 }
 
+/** „+150 ms“, „−1,25 s“ */
+private fun delayText(ms: Int): String {
+    val sign = if (ms > 0) "+" else if (ms < 0) "−" else ""
+    val a = kotlin.math.abs(ms)
+    return if (a < 1000) "$sign$a ms" else sign + String.format(java.util.Locale.ROOT, "%.2f s", a / 1000f)
+}
+
 private class Choice(val label: String, val selected: Boolean = false, val hint: String? = null, val onClick: () -> Unit)
 
 @Composable
@@ -332,8 +340,13 @@ private fun Panel(panel: PlayerPanel, ui: PlayerUi, actions: PlayerActions) {
     val choices: List<Choice>
     when (panel) {
         PlayerPanel.AUDIO -> {
-            title = t("Tonspur")
-            choices = ui.audio.map { Choice(it.label, it.selected) { actions.pickAudio(it.id) } }
+            title = t("Ton")
+            val now = t("Versatz jetzt: %1", delayText(ui.audioDelay))
+            choices = ui.audio.map { Choice(it.label, it.selected) { actions.pickAudio(it.id) } } + listOfNotNull(
+                Choice(t("Ton früher (−%1 ms)", AUDIO_DELAY_STEP), hint = now) { actions.audioDelay(ui.audioDelay - AUDIO_DELAY_STEP) },
+                Choice(t("Ton später (+%1 ms)", AUDIO_DELAY_STEP), hint = now) { actions.audioDelay(ui.audioDelay + AUDIO_DELAY_STEP) },
+                if (ui.audioDelay != 0) Choice(t("Versatz zurücksetzen")) { actions.audioDelay(0) } else null,
+            )
         }
         PlayerPanel.SUBTITLES -> {
             title = t("Untertitel")

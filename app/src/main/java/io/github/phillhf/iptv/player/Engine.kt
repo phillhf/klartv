@@ -32,6 +32,9 @@ interface Engine {
     fun selectText(id: String?)
     fun addSubtitle(uri: Uri, label: String)
     fun setSpeed(speed: Float)
+
+    /** Tonversatz in ms, positiv = Ton später. */
+    fun setAudioDelay(ms: Int)
     fun setScale(mode: ScaleMode)
 
     /** Werte für Selbstheilung und Diagnose. */

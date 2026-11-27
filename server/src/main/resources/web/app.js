@@ -825,10 +825,35 @@ async function settingsPage(id) {
   let epgText = 'Wird beim Öffnen von Live-TV geladen.';
   if (epg === 'loading') epgText = 'Wird gerade eingelesen …';
   else if (epg === 'none') epgText = 'Der Anbieter hat keinen Programmführer; die Sendungen kommen direkt vom Anbieter.';
-  else if (epg.startsWith('ok:')) { const [, t, n] = epg.split(':'); epgText = `${Number(n).toLocaleString('de-DE')} Sendungen, Stand ${new Date(Number(t)).toLocaleString('de-DE')}`; }
+  else if (epg.startsWith('ok:')) {
+    const [, t, n, f] = epg.split(':');
+    epgText = `${Number(n).toLocaleString('de-DE')} Sendungen, Stand ${new Date(Number(t)).toLocaleString('de-DE')}`;
+    if (Number(f) > 0) epgText += ` · ${f === '1' ? 'Eine Quelle war' : f + ' Quellen waren'} nicht erreichbar`;
+  }
   else if (epg.startsWith('error:')) epgText = 'Fehler: ' + epg.slice(6);
+  const acc = st.accounts.find((x) => x.id === st.active) || st.accounts[0];
+  const urls = h('textarea', { rows: 3, autocapitalize: 'off', spellcheck: 'false', placeholder: 'http://…/guide.xml.gz' });
+  urls.value = acc.epgUrls || '';
+  const provider = h('input', { type: 'checkbox', checked: acc.epgProvider !== false });
+  const shift = h('select', null, Array.from({ length: 49 }, (_, i) => (i - 24) * 30).map((m) =>
+    h('option', { value: m, selected: (acc.epgShift || 0) === m }, m === 0 ? 'Keine' : `${m > 0 ? '+' : '−'}${shiftText(Math.abs(m))}`)));
+  const every = h('select', null, [[0, 'Nur von Hand'], [6, 'Alle 6 Stunden'], [12, 'Alle 12 Stunden'], [24, 'Einmal am Tag']]
+    .map(([v, t]) => h('option', { value: v, selected: Number(st.refreshHours ?? 12) === v }, t)));
+  const epgMsg = h('div');
   $main.append(h('div', { class: 'card' }, h('h2', { style: 'margin-top:0' }, 'Programmführer'), h('p', { class: 'dim' }, epgText),
+    h('label', { class: 'field' }, h('span', null, 'Eigene Programmführer (XMLTV), eine Adresse je Zeile. Kennen mehrere Quellen einen Sender, gilt die obere.'), urls),
+    h('label', { class: 'row', style: 'gap:8px;margin-bottom:14px' }, provider, h('span', null, 'Programmführer des Anbieters zusätzlich nutzen')),
+    h('label', { class: 'field' }, h('span', null, 'Sendezeiten verschieben, wenn der Anbieter sie falsch liefert'), shift),
+    h('label', { class: 'field' }, h('span', null, 'Listen und Programm automatisch neu laden'), every),
+    epgMsg,
     h('div', { class: 'row' },
+      h('button', { class: 'btn primary', onclick: async () => {
+        try {
+          await api('epg/settings', { urls: urls.value, provider: provider.checked, shift: Number(shift.value), refreshHours: Number(every.value) });
+          await loadState();
+          epgMsg.replaceChildren(h('div', { class: 'msg ok' }, 'Gespeichert.'));
+        } catch (e) { epgMsg.replaceChildren(h('div', { class: 'msg error' }, e.message)); }
+      } }, 'Speichern'),
       h('button', { class: 'btn', onclick: async () => { await api('epg/refresh', {}); toast('Programmführer wird neu eingelesen.'); } }, 'Jetzt neu laden'),
       h('button', { class: 'btn', onclick: async () => { resetCatalogs(); for (const k of ['LIVE', 'MOVIE', 'SERIES']) await catalog(k, true).catch(() => null); toast('Listen neu geladen.'); } }, 'Listen neu laden'))));
 
@@ -945,6 +970,11 @@ async function updateCard() {
   if (u.state === 'checking' || u.state === 'downloading') poll();
 }
 
+/** 90 → „1:30 Std.“ */
+function shiftText(m) {
+  return m % 60 === 0 ? `${m / 60} Std.` : `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} Std.`;
+}
+
 function accountDialog(a) {
   const type = h('select', null, h('option', { value: 'XTREAM', selected: !a || a.type !== 'M3U' }, 'Xtream Codes (Server, Benutzer, Passwort)'),
     h('option', { value: 'M3U', selected: a && a.type === 'M3U' }, 'M3U-Playlist (Adresse)'));
@@ -953,7 +983,6 @@ function accountDialog(a) {
   const user = h('input', { type: 'text', value: a ? a.username : '', autocapitalize: 'off', autocomplete: 'off' });
   const pass = h('input', { type: 'password', autocomplete: 'off', placeholder: a && a.hasPassword ? 'unverändert' : '' });
   const m3u = h('input', { type: 'url', autocapitalize: 'off', placeholder: a && a.hasM3u ? 'unverändert' : 'http://…/playlist.m3u' });
-  const epg = h('input', { type: 'url', value: a ? a.epgUrl : '', autocapitalize: 'off', placeholder: 'leer = vom Anbieter' });
   const xt = h('div', null, h('label', { class: 'field' }, h('span', null, 'Server'), server),
     h('label', { class: 'field' }, h('span', null, 'Benutzername'), user), h('label', { class: 'field' }, h('span', null, 'Passwort'), pass));
   const mu = h('div', null, h('label', { class: 'field' }, h('span', null, 'Adresse der Playlist'), m3u));
@@ -968,7 +997,7 @@ function accountDialog(a) {
         save.disabled = true;
         msg.replaceChildren(h('div', { class: 'msg' }, 'Zugang wird geprüft …'));
         try {
-          await api('accounts/save', { id: a ? a.id : '', type: type.value, name: name.value, server: server.value, username: user.value, password: pass.value, m3uUrl: m3u.value, epgUrl: epg.value });
+          await api('accounts/save', { id: a ? a.id : '', type: type.value, name: name.value, server: server.value, username: user.value, password: pass.value, m3uUrl: m3u.value });
           d.close();
           resetCatalogs();
           await loadState();
@@ -981,7 +1010,6 @@ function accountDialog(a) {
     },
     h('label', { class: 'field' }, h('span', null, 'Art'), type),
     h('label', { class: 'field' }, h('span', null, 'Name'), name), xt, mu,
-    h('label', { class: 'field' }, h('span', null, 'Eigener Programmführer (XMLTV), optional'), epg),
     msg, h('div', { class: 'row' }, save, h('button', { class: 'btn', type: 'button', onclick: () => d.close() }, 'Abbrechen'))));
   sw();
 }

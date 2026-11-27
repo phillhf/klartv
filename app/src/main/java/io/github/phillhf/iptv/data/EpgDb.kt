@@ -38,40 +38,63 @@ class EpgDb(context: Context) : SQLiteOpenHelper(context, "epg.db", null, 1) {
      */
     fun import(
         account: String,
-        input: InputStream,
+        sources: List<() -> InputStream>,
         from: Long,
         to: Long,
         keyFor: (id: String, names: List<String>) -> List<String>,
         onProgress: (Int) -> Unit,
         isCancelled: () -> Boolean,
+        onSourceFailed: (index: Int, error: Exception) -> Unit = { _, _ -> },
     ): Int {
         val db = writableDatabase
-        val names = HashMap<String, MutableList<String>>()
-        val keys = HashMap<String, List<String>>()
+        // Kennen mehrere Quellen einen Sender, gilt die erste
+        val owner = HashMap<String, Int>()
         var count = 0
+        var failed: Exception? = null
+        var worked = 0
         db.beginTransactionNonExclusive()
         try {
             db.delete("prog", "acc = ?", arrayOf(account))
             val insert = db.compileStatement("INSERT INTO prog VALUES (?, ?, ?, ?, ?, ?)")
-            Xmltv.parse(
-                input,
-                onChannel = { id, name -> names.getOrPut(id) { ArrayList(1) }.add(name) },
-                onProgramme = { p ->
-                    if (isCancelled()) throw InterruptedException()
-                    if (p.stop >= from && p.start <= to) {
-                        for (key in keys.getOrPut(p.channel) { keyFor(p.channel, names[p.channel].orEmpty()) }) {
-                            insert.bindString(1, account)
-                            insert.bindString(2, key)
-                            insert.bindLong(3, p.start)
-                            insert.bindLong(4, p.stop)
-                            insert.bindString(5, p.title)
-                            insert.bindString(6, p.description)
-                            insert.executeInsert()
-                            if (++count % 2000 == 0) onProgress(count)
-                        }
+            sources.forEachIndexed { index, source ->
+                val names = HashMap<String, MutableList<String>>()
+                val keys = HashMap<String, List<String>>()
+                try {
+                    source().use { input ->
+                        Xmltv.parse(
+                            input,
+                            onChannel = { id, name -> names.getOrPut(id) { ArrayList(1) }.add(name) },
+                            onProgramme = { p ->
+                                if (isCancelled()) throw InterruptedException()
+                                if (p.stop >= from && p.start <= to) {
+                                    val targets = keys.getOrPut(p.channel) {
+                                        keyFor(p.channel, names[p.channel].orEmpty()).filter { owner.getOrPut(it) { index } == index }
+                                    }
+                                    for (key in targets) {
+                                        insert.bindString(1, account)
+                                        insert.bindString(2, key)
+                                        insert.bindLong(3, p.start)
+                                        insert.bindLong(4, p.stop)
+                                        insert.bindString(5, p.title)
+                                        insert.bindString(6, p.description)
+                                        insert.executeInsert()
+                                        if (++count % 2000 == 0) onProgress(count)
+                                    }
+                                }
+                            },
+                        )
                     }
-                },
-            )
+                    worked++
+                } catch (e: InterruptedException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (isCancelled()) throw InterruptedException()
+                    failed = e
+                    onSourceFailed(index, e)
+                }
+            }
+            // Keine Quelle ging: Das alte Programm bleibt stehen
+            if (worked == 0) failed?.let { throw it }
             db.insertWithOnConflict(
                 "info",
                 null,

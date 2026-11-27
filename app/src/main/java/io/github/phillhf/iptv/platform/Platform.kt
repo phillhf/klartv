@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
@@ -20,7 +22,10 @@ import io.github.phillhf.iptv.LocalNetworkPermission
 import io.github.phillhf.iptv.PlayerActivity
 import io.github.phillhf.iptv.R
 import io.github.phillhf.iptv.ReminderReceiver
+import io.github.phillhf.iptv.TvHome
+import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Reminder
+import io.github.phillhf.iptv.data.Stream
 import java.io.InputStream
 
 // Was der gemeinsame Code vom System braucht. Das Gegenstück für Windows liegt in desktop/.
@@ -69,6 +74,31 @@ const val canPickFolder = false
 fun pickFolder(): String? = null
 
 fun isTv(context: AppContext): Boolean = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+
+/** „Weiterschauen“ und Lieblingssender auf dem Startbildschirm des Fernsehers. [account] null leert die Reihen. */
+fun publishHomeRows(context: AppContext, account: String?, continueList: List<ContinueEntry>, channels: List<Stream>) {
+    if (account == null) TvHome.clear(context) else TvHome.update(context, account, continueList, channels)
+}
+
+/** Gibt es Startbildschirm-Reihen auf diesem Gerät? */
+fun hasHomeRows(context: AppContext): Boolean = TvHome.available(context)
+
+/** Kann die App beim Einschalten des Geräts von selbst starten? */
+fun canAutostart(@Suppress("UNUSED_PARAMETER") context: AppContext): Boolean = true
+
+/** Ab Android 10 darf eine App nur mit „Über anderen Apps einblenden“ von selbst nach vorn kommen. */
+fun autostartBlocked(context: AppContext): Boolean =
+    Build.VERSION.SDK_INT >= 29 && !Settings.canDrawOverlays(context)
+
+/** Öffnet die Systemseite für diese Erlaubnis. Gibt false zurück, wenn das Gerät keine hat. */
+fun openAutostartPermission(context: AppContext): Boolean {
+    val app = Uri.parse("package:" + context.packageName)
+    val tries = listOf(
+        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, app),
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, app),
+    )
+    return tries.any { i -> runCatching { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess }
+}
 
 fun isKeyRepeat(event: KeyEvent): Boolean = event.nativeKeyEvent.repeatCount > 0
 

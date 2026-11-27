@@ -16,25 +16,44 @@ data class Account(
     val username: String = "",
     val password: String = "",
     val m3uUrl: String = "",
-    /** Eigene XMLTV-Adresse, leer = die des Anbieters. */
-    val epgUrl: String = "",
+    /** Eigene XMLTV-Adressen; bei Sendern, die mehrere kennen, gilt die erste. */
+    val epgUrls: List<String> = emptyList(),
+    /** Den Programmführer des Anbieters zusätzlich nutzen, nach den eigenen. */
+    val epgProvider: Boolean = true,
+    /** Verschiebt alle Sendezeiten um so viele Minuten, wenn der Anbieter sie falsch liefert. */
+    val epgShift: Int = 0,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("name", name).put("type", type.name)
         .put("server", server).put("username", username).put("password", password).put("m3uUrl", m3uUrl)
-        .put("epgUrl", epgUrl)
+        // „epgUrl“ für ältere Fassungen, die nur eine Adresse kennen
+        .put("epgUrl", epgUrls.firstOrNull().orEmpty()).put("epgUrls", JSONArray(epgUrls))
+        .put("epgProvider", epgProvider).put("epgShift", epgShift)
 
     companion object {
-        fun fromJson(o: JSONObject) = Account(
-            id = o.getString("id"),
-            name = o.optString("name"),
-            type = runCatching { SourceType.valueOf(o.optString("type")) }.getOrDefault(SourceType.XTREAM),
-            server = o.optString("server"),
-            username = o.optString("username"),
-            password = o.optString("password"),
-            m3uUrl = o.optString("m3uUrl"),
-            epgUrl = o.optString("epgUrl"),
-        )
+        /** Adressen aus einer Eingabe: eine je Zeile, auch mit Leerzeichen getrennt. */
+        fun parseUrls(text: String): List<String> = text.split(Regex("\\s+")).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+        fun fromJson(o: JSONObject): Account {
+            val urls = o.optJSONArray("epgUrls")?.let { arr -> (0 until arr.length()).map { arr.optString(it).trim() }.filter { it.isNotEmpty() } }
+                ?: listOfNotNull(o.optString("epgUrl").trim().ifEmpty { null })
+            return Account(
+                id = o.getString("id"),
+                name = o.optString("name"),
+                type = runCatching { SourceType.valueOf(o.optString("type")) }.getOrDefault(SourceType.XTREAM),
+                server = o.optString("server"),
+                username = o.optString("username"),
+                password = o.optString("password"),
+                m3uUrl = o.optString("m3uUrl"),
+                epgUrls = urls,
+                // Bis 0.9 ersetzte die eigene Adresse die des Anbieters
+                epgProvider = o.optBoolean("epgProvider", urls.isEmpty()),
+                epgShift = o.optInt("epgShift").coerceIn(-EPG_SHIFT_MAX, EPG_SHIFT_MAX),
+            )
+        }
+
+        /** Höchstens zwölf Stunden in jede Richtung. */
+        const val EPG_SHIFT_MAX = 12 * 60
     }
 }
 
@@ -255,6 +274,26 @@ class Library(context: AppContext, accountId: String, profileId: String = "") {
         map.entries.toList().takeLast(1000).forEach { (k, v) -> o.put(k, v.joinToString(",") { it.removePrefix("EP:") }) }
         shared.edit().putString("series_episodes", o.toString()).apply()
         return map
+    }
+
+    // ---------- Tonversatz ----------
+
+    /** Tonversatz je Sender oder Film in ms, positiv = Ton später. Gilt für alle Profile und wird abgeglichen. */
+    fun audioDelays(): Map<String, Int> = runCatching {
+        val o = JSONObject(shared.getString("audio_delays", "{}") ?: "{}")
+        o.keys().asSequence().toList().associateWith { o.getInt(it) }
+    }.getOrDefault(emptyMap())
+
+    fun audioDelay(key: String): Int = audioDelays()[key] ?: 0
+
+    /** 0 löscht den Eintrag. */
+    fun saveAudioDelay(key: String, ms: Int) {
+        val map = LinkedHashMap(audioDelays())
+        map.remove(key)
+        if (ms != 0) map[key] = ms
+        val o = JSONObject()
+        map.entries.toList().takeLast(2000).forEach { (k, v) -> o.put(k, v) }
+        shared.edit().putString("audio_delays", o.toString()).apply()
     }
 
     fun position(key: String): Long = prefs.getLong("pos:$key", 0L)

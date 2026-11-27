@@ -221,6 +221,8 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         ui.canStartOver = false
         val at = position ?: if (item.live) 0L else PlaybackQueue.library?.position(item.key) ?: 0L
         health.start(item.live, fresh = true)
+        ui.audioDelay = PlaybackQueue.library?.audioDelay(item.delayKey) ?: 0
+        engine?.setAudioDelay(ui.audioDelay)
         engine?.load(item, at)
         PlaybackQueue.onPlay?.invoke(item)
         showInfo(item)
@@ -455,6 +457,13 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
     override fun pickAudio(id: String) {
         engine?.selectAudio(id)
         openPanel(null)
+    }
+
+    override fun audioDelay(ms: Int) {
+        val value = ms.coerceIn(-AUDIO_DELAY_MAX, AUDIO_DELAY_MAX)
+        ui.audioDelay = value
+        engine?.setAudioDelay(value)
+        ui.item?.let { PlaybackQueue.library?.saveAudioDelay(it.delayKey, value) }
     }
 
     override fun pickText(id: String?) {

@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.phillhf.iptv.AppViewModel
@@ -73,6 +74,9 @@ import io.github.phillhf.iptv.data.Tmdb
 import io.github.phillhf.iptv.platform.AppUpdates
 import io.github.phillhf.iptv.platform.LocalAppContext
 import io.github.phillhf.iptv.platform.appVersion
+import io.github.phillhf.iptv.platform.autostartBlocked
+import io.github.phillhf.iptv.platform.canAutostart
+import io.github.phillhf.iptv.platform.openAutostartPermission
 import io.github.phillhf.iptv.platform.canPickFolder
 import io.github.phillhf.iptv.platform.mouseDriven
 import io.github.phillhf.iptv.platform.openUrl
@@ -84,6 +88,7 @@ import io.github.phillhf.iptv.transfer.Transfers
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -137,14 +142,54 @@ fun SettingsScreen(vm: AppViewModel) {
         Section(t("Programmführer")) {
             Dim(
                 when (val s = vm.epgState) {
-                    is EpgState.Ready -> t("%1 Sendungen, Stand %2", s.count, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(s.time)))
+                    is EpgState.Ready -> t("%1 Sendungen, Stand %2", s.count, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(s.time))) +
+                        if (s.failed > 0) " · " + t("Nicht erreichbar: %1 von %2 Quellen", s.failed, epgSourceCount(vm)) else ""
                     is EpgState.Loading -> t("Lade Programmführer … %1 Sendungen", s.count)
                     is EpgState.Error -> t("Programmführer nicht geladen: %1", s.message)
                     EpgState.None -> if (vm.hasEpg) t("Das Programm kommt direkt vom Anbieter.") else t("Dein Anbieter nennt keinen Programmführer.")
                     EpgState.Idle -> t("Wird geladen, sobald die Senderliste da ist.")
                 },
             )
-            TextSetting(t("Eigene XMLTV-Adresse (leer = vom Anbieter)"), vm.active?.epgUrl.orEmpty()) { vm.updateEpgUrl(it) }
+            vm.active?.let { a ->
+                Text(t("Eigene Programmführer (XMLTV)"))
+                a.epgUrls.forEachIndexed { i, url ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i + 1}. $url", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (i > 0) {
+                            Action(null, t("Nach oben")) {
+                                val list = a.epgUrls.toMutableList()
+                                list[i] = list[i - 1].also { list[i - 1] = list[i] }
+                                vm.updateEpgSources(list, a.epgProvider)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Action(null, t("Entfernen")) { vm.updateEpgSources(a.epgUrls - url, a.epgProvider) }
+                    }
+                }
+                AddSetting(t("Programmführer hinzufügen (Adresse)")) { text ->
+                    val urls = Account.parseUrls(text)
+                    if (urls.isNotEmpty()) vm.updateEpgSources(a.epgUrls + urls, a.epgProvider)
+                }
+                SwitchRow(
+                    t("Programmführer des Anbieters nutzen"),
+                    t("Kennen mehrere Quellen denselben Sender, gilt die obere. Der des Anbieters kommt nach den eigenen."),
+                    a.epgProvider,
+                ) { vm.updateEpgSources(a.epgUrls, it) }
+                Text(t("Sendezeiten verschieben"))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Action(null, t("−30 Min.")) { vm.updateEpgShift(a.epgShift - 30) }
+                    Text(shiftText(a.epgShift), modifier = Modifier.widthIn(min = 110.dp), textAlign = TextAlign.Center)
+                    Action(null, t("+30 Min.")) { vm.updateEpgShift(a.epgShift + 30) }
+                    if (a.epgShift != 0) Action(null, t("Zurücksetzen")) { vm.updateEpgShift(0) }
+                }
+                Dim(t("Nur nötig, wenn das Programm bei diesem Anbieter immer gleich viel zu früh oder zu spät ist."))
+            }
+            Text(t("Automatisch neu laden"))
+            Options(
+                listOf(0 to t("Nur von Hand"), 6 to t("Alle 6 Stunden"), 12 to t("Alle 12 Stunden"), 24 to t("Einmal am Tag")),
+                AppSettings.refreshHours,
+            ) { AppSettings.refreshHours = it }
+            Dim(t("Senderliste, Filme, Serien und Programm, solange die App läuft. Fehlt der Programmführer noch ganz, lädt die App ihn immer."))
             FlowButtons { Action(Icons.Filled.Refresh, t("Programm jetzt laden")) { vm.refreshEpg(force = true) } }
         }
 
@@ -181,6 +226,8 @@ fun SettingsScreen(vm: AppViewModel) {
             Options(languageChoices(), AppSettings.audioLanguage) { AppSettings.audioLanguage = it }
             TextSetting(t("Eigene Player-Kennung (User-Agent), meist leer lassen"), AppSettings.userAgent) { AppSettings.userAgent = it.trim() }
         }
+
+        if (canAutostart(context)) Section(t("Beim Einschalten")) { AutostartSettings() }
 
         Section(t("Speicherort für Aufnahmen und Downloads")) { StorageSettings() }
 
@@ -479,6 +526,71 @@ private fun SwitchRow(title: String, hint: String, checked: Boolean, onChange: (
         }
         Switch(checked = checked, onCheckedChange = null, modifier = Modifier.padding(start = 12.dp))
     }
+}
+
+/** Klar TV startet von selbst, wenn das Gerät eingeschaltet wird. */
+@Composable
+private fun AutostartSettings() {
+    val context = LocalAppContext.current
+    var blocked by remember { mutableStateOf(autostartBlocked(context)) }
+    // Nach der Rückkehr aus den Systemeinstellungen neu prüfen
+    LaunchedEffect(Unit) {
+        while (true) {
+            blocked = autostartBlocked(context)
+            delay(2000)
+        }
+    }
+    Options(
+        listOf("" to t("Nicht starten"), "home" to t("Startseite"), "last" to t("Letzten Sender abspielen")),
+        AppSettings.autostart,
+    ) { AppSettings.autostart = it }
+    Dim(t("Startet Klar TV, wenn das Gerät hochfährt. Kommt der Fernseher nur aus dem Standby, startet Android keine Apps."))
+    if (AppSettings.autostart.isNotEmpty() && blocked) {
+        Text(t("Dafür braucht Klar TV die Erlaubnis „Über anderen Apps einblenden“."), color = Klar.Gold)
+        FlowButtons {
+            Action(null, t("Erlaubnis geben")) {
+                if (!openAutostartPermission(context)) blocked = true
+            }
+        }
+    }
+}
+
+/** Leeres Feld zum Hinzufügen; leert sich nach dem Speichern. */
+@Composable
+private fun AddSetting(label: String, onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    val add = {
+        if (text.isNotBlank()) onAdd(text)
+        text = ""
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text(label) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { add() }),
+            modifier = Modifier.weight(1f).leaveWithArrows(),
+        )
+        if (text.isNotBlank()) {
+            TextButton(onClick = add, modifier = Modifier.padding(start = 8.dp).focusRing(Pill)) { Text(t("Hinzufügen")) }
+        }
+    }
+}
+
+/** Wie viele Quellen der Programmführer gerade hat, für die Meldung. */
+private fun epgSourceCount(vm: AppViewModel): Int {
+    val a = vm.active ?: return 0
+    return a.epgUrls.size + if (a.epgProvider) 1 else 0
+}
+
+/** 90 → „+1:30 Std.“ */
+private fun shiftText(minutes: Int): String {
+    if (minutes == 0) return t("keine")
+    val sign = if (minutes > 0) "+" else "−"
+    val m = kotlin.math.abs(minutes)
+    return sign + if (m % 60 == 0) t("%1 Std.", m / 60) else t("%1 Std.", "${m / 60}:${(m % 60).toString().padStart(2, '0')}")
 }
 
 /** Textfeld, das erst beim Bestätigen speichert. */

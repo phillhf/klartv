@@ -14,6 +14,10 @@ import io.github.phillhf.iptv.player.Track
 
 enum class PlayerPanel { AUDIO, SUBTITLES, SPEED, SCALE, ENGINE, CHANNELS, SLEEP, CAST, FIND_SUBTITLES }
 
+/** Schritt und Grenze des Tonversatzes in ms. */
+const val AUDIO_DELAY_STEP = 50
+const val AUDIO_DELAY_MAX = 5000
+
 /** Alles, was die Oberfläche des Players anzeigt. */
 class PlayerUi {
     var items by mutableStateOf<List<PlayItem>>(emptyList())
@@ -42,6 +46,9 @@ class PlayerUi {
     var canStartOver by mutableStateOf(false)
     var sleepAt by mutableLongStateOf(0L)
     var audio by mutableStateOf<List<Track>>(emptyList())
+
+    /** Tonversatz in ms, positiv = Ton später. */
+    var audioDelay by mutableIntStateOf(0)
     var text by mutableStateOf<List<Track>>(emptyList())
     var found by mutableStateOf<List<OpenSubtitles.Hit>?>(null)
 
@@ -74,6 +81,9 @@ interface PlayerActions {
     val ui: PlayerUi
     fun openPanel(panel: PlayerPanel?)
     fun pickAudio(id: String)
+
+    /** Tonversatz in ms setzen und für diesen Sender oder Film merken. */
+    fun audioDelay(ms: Int)
     fun pickText(id: String?)
     fun loadSubtitleFile()
     fun findSubtitles()

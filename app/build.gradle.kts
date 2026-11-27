@@ -15,7 +15,7 @@ android {
         targetSdk = 37
         // Jeder CI-Lauf bekommt eine höhere Nummer, damit Android und Play das Update annehmen
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.9.1"
+        versionName = "0.10.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -129,6 +129,9 @@ dependencies {
     implementation(libs.cast.framework)
     implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.fragment)
+
+    // „Weiterschauen“ und Favoriten auf dem Startbildschirm des Fernsehers
+    implementation(libs.androidx.tvprovider)
 
     // Senderlogos und Filmplakate
     implementation(libs.coil.compose)

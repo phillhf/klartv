@@ -61,6 +61,8 @@ class VlcEngine(context: Context) : Engine {
                 MediaPlayer.Event.Buffering -> listener?.onBuffering(e.buffering < 100f)
                 MediaPlayer.Event.Playing -> {
                     playing = true
+                    // VLC vergisst den Versatz bei jedem neuen Medium
+                    player.setAudioDelay(audioDelayMs * 1000L)
                     listener?.onBuffering(false)
                     listener?.onPlaying(true)
                     if (!reportedReady) {
@@ -174,6 +176,13 @@ class VlcEngine(context: Context) : Engine {
     override fun setSpeed(speed: Float) {
         this.speed = speed
         player.rate = speed
+    }
+
+    private var audioDelayMs = 0
+
+    override fun setAudioDelay(ms: Int) {
+        audioDelayMs = ms
+        player.setAudioDelay(ms * 1000L)
     }
 
     override fun setScale(mode: ScaleMode) {

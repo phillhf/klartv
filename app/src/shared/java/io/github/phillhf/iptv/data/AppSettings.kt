@@ -81,6 +81,17 @@ object AppSettings {
     /** Live-TV: Stream neu aufbauen, wenn er nach langer Laufzeit ruckelt oder auseinanderläuft. */
     var selfHeal by Pref(true)
 
+    /** Listen und Programmführer automatisch neu laden: alle so viele Stunden, 0 = nur von Hand. */
+    var refreshHours by Pref(12)
+    val refreshMs: Long get() = refreshHours.takeIf { it > 0 }?.let { it * 3_600_000L } ?: Long.MAX_VALUE
+
+    /** Beim Einschalten des Geräts starten: "" = nein, "home" = Startseite, "last" = letzter Sender. Nur dieses Gerät. */
+    var autostart by Pref("")
+
+    /** Zuletzt gesehener Sender als „Konto
+Schlüssel“, für den Autostart. Nur dieses Gerät. */
+    var lastChannel by Pref("")
+
     /** Diagnose-Werte im Player einblenden. */
     var diagnostics by Pref(false)
     var theme by Pref("NIGHT")

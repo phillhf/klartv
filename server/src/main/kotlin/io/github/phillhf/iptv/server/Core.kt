@@ -8,7 +8,7 @@ import io.github.phillhf.iptv.data.Catalog
 import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.EpgDb
 import io.github.phillhf.iptv.data.EpgEntry
-import io.github.phillhf.iptv.data.Http
+import io.github.phillhf.iptv.data.EpgImport
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Library
 import io.github.phillhf.iptv.data.Profile
@@ -18,10 +18,10 @@ import io.github.phillhf.iptv.data.SeriesInfo
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.data.Stream
 import io.github.phillhf.iptv.data.VodInfo
-import io.github.phillhf.iptv.data.Xmltv
 import io.github.phillhf.iptv.data.XtreamBackend
 import io.github.phillhf.iptv.data.customized
 import io.github.phillhf.iptv.data.looksAdult
+import io.github.phillhf.iptv.data.shifted
 import io.github.phillhf.iptv.platform.AppContext
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -102,6 +102,14 @@ class Core(val context: AppContext) {
         Thread { runCatching { refreshEpg(true) } }.start()
     }
 
+    /** Programmführer-Einstellungen des aktiven Anbieters, ohne neue Anmeldung. */
+    fun updateEpg(a: Account, reload: Boolean) {
+        accounts.save(accounts.all().map { if (it.id == a.id) a else it })
+        synchronized(this) { if (active?.id == a.id) active = a }
+        shortEpg.clear()
+        if (reload) Thread { runCatching { refreshEpg(true) } }.start()
+    }
+
     fun deleteAccount(id: String) {
         accounts.save(accounts.all().filter { it.id != id })
         if (accounts.activeId == id) accounts.activeId = null
@@ -129,11 +137,11 @@ class Core(val context: AppContext) {
 
     // ---------- Listen ----------
 
-    /** Liste vom Anbieter, sechs Stunden zwischengespeichert. */
+    /** Liste vom Anbieter, zwischengespeichert so lange wie in den Einstellungen („Automatisch neu laden“). */
     fun rawCatalog(kind: Kind, refresh: Boolean = false): Catalog {
         val b = requireBackend()
         synchronized(catalogLocks.getValue(kind)) {
-            catalogs[kind]?.let { if (!refresh && System.currentTimeMillis() - it.time < 6 * 3_600_000L) return it.value }
+            catalogs[kind]?.let { if (!refresh && System.currentTimeMillis() - it.time < AppSettings.refreshMs) return it.value }
             // Playlist neu holen, sonst kommt dieselbe aus dem Speicher
             if (refresh) (b as? M3uBackend)?.reset()
             val c = b.catalog(kind, accounts.liveFormat)
@@ -210,14 +218,17 @@ class Core(val context: AppContext) {
     // ---------- Programmführer ----------
 
     /** Mit dem Namen des Anbieters, auch wenn der Nutzer den Sender umbenannt hat. Wie in der App. */
-    private fun epgKey(s: Stream): String = s.epgId?.trim()?.lowercase()?.ifEmpty { null }
-        ?: ("n:" + Xmltv.normalizeName(catalogs[Kind.LIVE]?.value?.byKey?.get(s.key)?.name ?: s.name))
+    private fun epgKey(s: Stream): String = EpgImport.key(s, catalogs[Kind.LIVE]?.value?.byKey?.get(s.key)?.name ?: s.name)
+
+    /** Verschiebung der Sendezeiten des aktiven Anbieters in ms. */
+    private val shiftMs: Long get() = (active?.epgShift ?: 0) * 60_000L
 
     /** Programm eines Senders im Zeitraum, aus dem Programmführer oder direkt vom Anbieter. */
     fun programmes(s: Stream, from: Long, to: Long): List<EpgEntry> {
         val a = active ?: return emptyList()
         val b = backend ?: return emptyList()
-        val stored = runCatching { epgDb.programmes(a.id, epgKey(s), from, to) }.getOrDefault(emptyList())
+        val shift = shiftMs
+        val stored = runCatching { epgDb.programmes(a.id, epgKey(s), from - shift, to - shift) }.getOrDefault(emptyList()).shifted(shift)
         if (stored.isNotEmpty() || !b.hasEpg) return stored
         val key = "full:${s.id}"
         val all = shortEpg[key]?.takeIf { System.currentTimeMillis() - it.time < 30 * 60_000L }?.value ?: run {
@@ -228,7 +239,7 @@ class Core(val context: AppContext) {
                 epgLimit.release()
             }
         }.also { shortEpg[key] = Cached(it, System.currentTimeMillis()) }
-        return all.filter { it.end > from && it.start < to }
+        return all.shifted(shift).filter { it.end > from && it.start < to }
     }
 
     /** Laufende und nächste Sendung. */
@@ -236,10 +247,11 @@ class Core(val context: AppContext) {
         val now = System.currentTimeMillis()
         val a = active ?: return emptyList()
         val b = backend ?: return emptyList()
-        val stored = runCatching { epgDb.programmes(a.id, epgKey(s), now, now + 8 * 3_600_000L) }.getOrDefault(emptyList())
+        val shift = shiftMs
+        val stored = runCatching { epgDb.programmes(a.id, epgKey(s), now - shift, now + 8 * 3_600_000L - shift) }.getOrDefault(emptyList()).shifted(shift)
         if (stored.isNotEmpty() || !b.hasEpg) return stored.take(2)
         val key = "short:${s.id}"
-        shortEpg[key]?.let { if (now - it.time < 10 * 60_000L) return it.value.filter { e -> e.end > now }.take(2) }
+        shortEpg[key]?.let { if (now - it.time < 10 * 60_000L) return it.value.shifted(shift).filter { e -> e.end > now }.take(2) }
         epgLimit.acquire()
         val list = try {
             runCatching { b.epg(s.id) }.getOrDefault(emptyList())
@@ -247,10 +259,10 @@ class Core(val context: AppContext) {
             epgLimit.release()
         }
         shortEpg[key] = Cached(list, now)
-        return list.filter { it.end > now }.take(2)
+        return list.shifted(shift).filter { it.end > now }.take(2)
     }
 
-    /** Liest den Programmführer des Anbieters ein, wenn er älter als zwölf Stunden ist oder [force]. */
+    /** Liest den Programmführer ein, wenn er älter als in den Einstellungen festgelegt ist, gar keiner da ist oder [force]. */
     fun refreshEpg(force: Boolean) {
         val a = active ?: return
         val b = backend ?: return
@@ -261,43 +273,20 @@ class Core(val context: AppContext) {
         }
         try {
             val old = epgDb.info(a.id)
-            if (!force && old != null && System.currentTimeMillis() - old.time < 12 * 3_600_000L) {
-                epgStatus = "ok:${old.time}:${old.count}"
+            if (!force && old != null && System.currentTimeMillis() - old.time < AppSettings.refreshMs) {
+                if (!epgStatus.startsWith("ok:")) epgStatus = "ok:${old.time}:${old.count}"
                 return
             }
-            val url = a.epgUrl.ifBlank { b.epgUrl().orEmpty() }
-            if (url.isBlank()) {
+            val urls = EpgImport.urls(a) { b.epgUrl() }
+            if (urls.isEmpty()) {
                 epgStatus = "none"
                 return
             }
             epgStatus = "loading"
-            val ids = live.mapNotNullTo(HashSet()) { it.epgId?.trim()?.lowercase()?.ifEmpty { null } }
-            val names = live.filter { it.epgId.isNullOrBlank() }.mapTo(HashSet()) { Xmltv.normalizeName(it.name) }
-            names.remove("")
-            val back = live.maxOf { it.archiveDays }.coerceIn(1, 7)
-            val now = System.currentTimeMillis()
-            val conn = Http.open(url)
-            val count = try {
-                epgDb.import(
-                    a.id,
-                    conn.inputStream,
-                    from = now - back * 86_400_000L,
-                    to = now + 4 * 86_400_000L,
-                    keyFor = { id, shown ->
-                        buildList {
-                            val key = id.trim().lowercase()
-                            if (key in ids) add(key)
-                            shown.map { Xmltv.normalizeName(it) }.filter { it in names }.distinct().forEach { add("n:$it") }
-                        }
-                    },
-                    onProgress = {},
-                    isCancelled = { active?.id != a.id },
-                )
-            } finally {
-                conn.disconnect()
-            }
+            val result = EpgImport.run(epgDb, a, urls, live, onProgress = {}, isCancelled = { active?.id != a.id })
+            val count = result.count
             shortEpg.clear()
-            epgStatus = "ok:${System.currentTimeMillis()}:$count"
+            epgStatus = "ok:${System.currentTimeMillis()}:$count:${result.failed}"
         } catch (e: Throwable) {
             epgStatus = "error:" + (e.message ?: e.javaClass.simpleName)
         } finally {

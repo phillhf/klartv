@@ -38,6 +38,9 @@ interface LibVlc : Library {
     fun libvlc_media_player_add_slave(player: Pointer, type: Int, uri: String, select: Byte): Int
 
     fun libvlc_audio_set_volume(player: Pointer, volume: Int): Int
+
+    /** Tonversatz in Mikrosekunden, positiv = Ton später. Gilt nur für das laufende Medium. */
+    fun libvlc_audio_set_delay(player: Pointer, delay: Long): Int
     fun libvlc_audio_set_mute(player: Pointer, mute: Int)
     fun libvlc_audio_get_track(player: Pointer): Int
     fun libvlc_audio_set_track(player: Pointer, id: Int): Int

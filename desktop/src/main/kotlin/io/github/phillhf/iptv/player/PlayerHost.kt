@@ -3,6 +3,7 @@ package io.github.phillhf.iptv.player
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.github.phillhf.iptv.AUDIO_DELAY_MAX
 import io.github.phillhf.iptv.PlayItem
 import io.github.phillhf.iptv.PlaybackQueue
 import io.github.phillhf.iptv.PlayerActions
@@ -131,6 +132,8 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
         val at = position ?: if (item.live) 0L else PlaybackQueue.library?.position(item.key) ?: 0L
         player.sink.clear()
         health.start(item.live, fresh = true)
+        ui.audioDelay = PlaybackQueue.library?.audioDelay(item.delayKey) ?: 0
+        player.setAudioDelay(ui.audioDelay)
         player.load(item, at)
         player.setSpeed(ui.speed)
         PlaybackQueue.onPlay?.invoke(item)
@@ -351,6 +354,13 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
     override fun pickAudio(id: String) {
         player.selectAudio(id)
         openPanel(null)
+    }
+
+    override fun audioDelay(ms: Int) {
+        val value = ms.coerceIn(-AUDIO_DELAY_MAX, AUDIO_DELAY_MAX)
+        ui.audioDelay = value
+        player.setAudioDelay(value)
+        ui.item?.let { PlaybackQueue.library?.saveAudioDelay(it.delayKey, value) }
     }
 
     override fun pickText(id: String?) {

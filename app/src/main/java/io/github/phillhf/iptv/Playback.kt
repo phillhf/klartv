@@ -9,7 +9,10 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
@@ -24,10 +27,27 @@ fun PlayItem.toMediaItem(): MediaItem {
     return builder.build()
 }
 
+/**
+ * Tonversatz für ExoPlayer, das selbst keinen kennt. Das Bild richtet sich nach der Uhr des Tons:
+ * Meldet der Ton eine spätere Zeit, kommt das Bild früher, der Ton also relativ später.
+ */
+@OptIn(UnstableApi::class)
+class AudioDelay {
+    /** Positiv = Ton später. */
+    @Volatile var ms: Int = 0
+
+    fun wrap(sink: AudioSink): AudioSink = object : ForwardingAudioSink(sink) {
+        override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
+            val p = super.getCurrentPositionUs(sourceEnded)
+            return if (p == AudioSink.CURRENT_POSITION_NOT_SET) p else (p + ms * 1000L).coerceAtLeast(0)
+        }
+    }
+}
+
 /** Gleich eingestellter Player für Vollbild und Live-Vorschau. */
 object Players {
     @OptIn(UnstableApi::class)
-    fun create(context: Context, handleAudioFocus: Boolean = true): ExoPlayer {
+    fun create(context: Context, handleAudioFocus: Boolean = true, delay: AudioDelay? = null): ExoPlayer {
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(Http.USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
@@ -37,7 +57,15 @@ object Players {
         val extractors = DefaultExtractorsFactory().setTsExtractorFlags(
             DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS,
         )
-        return ExoPlayer.Builder(context)
+        val renderers = if (delay == null) {
+            DefaultRenderersFactory(context)
+        } else {
+            object : DefaultRenderersFactory(context) {
+                override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? =
+                    super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)?.let { delay.wrap(it) }
+            }
+        }
+        return ExoPlayer.Builder(context, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(context, http), extractors))
             .setAudioAttributes(AudioAttributes.DEFAULT, handleAudioFocus)
             .setHandleAudioBecomingNoisy(true)

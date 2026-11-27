@@ -20,10 +20,13 @@ Einrichtung und Cloudflare-Tunnel: [server/README.md](server/README.md).
 - Anmeldung mit **Xtream Codes** oder **M3U-Playlist**, mehrere Anbieter umschaltbar
 - **Startseite** mit Weiterschauen, eigenen Sendern, Neuem und Kategorien
 - **Live-TV** mit laufender Sendung, Live-Vorschau, Zifferneingabe und bis zu **vier Sendern gleichzeitig**
-- **Programmführer** als Raster (XMLTV, auch für M3U), **Catch-up** und „Von vorn“, wenn der Anbieter es kann
+- **Programmführer** als Raster (XMLTV, auch für M3U), **Catch-up** und „Von vorn“, wenn der Anbieter es kann; mehrere XMLTV-Quellen zusammen, Sendezeiten verschiebbar, wenn der Anbieter sie falsch liefert
+- **Automatisch neu laden:** Senderliste, Filme, Serien und Programm alle 6, 12 oder 24 Stunden, solange die App läuft
 - **Filme und Serien** mit Cover, Beschreibung, Besetzung, Trailer, Weiterschauen und automatisch nächster Folge
-- **Aufnahmen** (sofort oder geplant) und **Downloads**, beides im Hintergrund
+- **Aufnahmen** (sofort oder geplant) und **Downloads**, beides im Hintergrund; **Serienaufnahmen**: jede Sendung mit einem Titel, jede Woche oder täglich zur selben Zeit
 - **Zwei Player-Engines:** ExoPlayer und VLC; wechselt von selbst, wenn das Gerät ein Format nicht kann
+- **Ton/Bild-Versatz** im Ton-Menü in Schritten von 50 ms, gemerkt je Sender oder Film und beim Abgleich übertragen
+- **Fernseher:** Autostart beim Hochfahren (Startseite oder letzter Sender), „Weiterschauen“ und Lieblingssender als Reihen auf dem Startbildschirm von Android TV
 - Tonspuren, Untertitel (Größe, Farbe, eigene Dateien), Tempo, Bildformat, Schlaf-Timer, Bild im Bild, Chromecast
 - **Selbstheilung bei Live-TV:** Ruckelt ein Sender nach Stunden, hängt er oder laufen Ton und Bild auseinander, baut die App ihn neu auf (spätestens alle 3 Stunden); auf Wunsch mit Diagnose-Einblendung
 - **Kindersicherung** mit PIN, sortierbare Favoriten, Suche über alles

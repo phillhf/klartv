@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -67,6 +68,8 @@ import io.github.phillhf.iptv.data.Catchup
 import io.github.phillhf.iptv.data.EpgEntry
 import io.github.phillhf.iptv.data.Kind
 import io.github.phillhf.iptv.data.Load
+import io.github.phillhf.iptv.data.RecordRule
+import io.github.phillhf.iptv.data.RecordRules
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.Stream
 import io.github.phillhf.iptv.platform.ListScrollbar
@@ -375,12 +378,49 @@ fun ProgrammeDialog(vm: AppViewModel, s: Stream, e: EpgEntry, onDismiss: () -> U
                             }
                         }
                     }
+                    SeriesActions(vm, s, e, now) { note = it }
                 }
                 note?.let { Text(it, color = Klar.Gold) }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.focusRing(Pill)) { Text(t("Schließen")) } },
     )
+}
+
+/** Regelmäßig aufnehmen: jede Sendung mit diesem Titel oder zur selben Uhrzeit. */
+@Composable
+private fun SeriesActions(vm: AppViewModel, s: Stream, e: EpgEntry, now: Long, onNote: (String) -> Unit) {
+    val context = LocalAppContext.current
+    val account = vm.active?.id ?: return
+    var choosing by remember { mutableStateOf(false) }
+    val rule = RecordRules.matching(account, s.key, e)
+    val at = Instant.ofEpochMilli(e.start).atZone(ZoneId.systemDefault())
+    val time = DateTimeFormatter.ofPattern("HH:mm").format(at)
+    val day = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()).format(at)
+    fun add(r: RecordRule) {
+        if (!Transfers.canSchedule()) {
+            onNote(t("Erlaube Klar TV zuerst genaue Wecker, sonst startet die Aufnahme nicht."))
+            openExactAlarmSettings(context)
+            return
+        }
+        vm.addRecordRule(r)
+        choosing = false
+        onNote(t("Serienaufnahme eingerichtet. Klar TV plant jede passende Sendung ein, sobald sie im Programm steht."))
+    }
+    when {
+        rule != null -> DialogAction(Icons.Filled.Repeat, t("Serienaufnahme beenden")) {
+            vm.removeRecordRule(rule)
+            onNote(t("Serienaufnahme beendet. Schon geplante Aufnahmen stehen weiter in der Mediathek."))
+        }
+        !choosing -> DialogAction(Icons.Filled.Repeat, t("Regelmäßig aufnehmen …")) { choosing = true }
+        else -> {
+            DialogAction(Icons.Filled.Repeat, t("Jede Sendung „%1“", e.title)) { add(RecordRules.newTitleRule(account, s, e)) }
+            DialogAction(Icons.Filled.Repeat, t("Jeden %1 um %2", day, time)) {
+                add(RecordRules.newSlotRule(account, s, e, RecordRule.dayBit(e.start)))
+            }
+            DialogAction(Icons.Filled.Repeat, t("Täglich um %1", time)) { add(RecordRules.newSlotRule(account, s, e, RecordRule.ALL_DAYS)) }
+        }
+    }
 }
 
 @Composable

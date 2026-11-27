@@ -42,16 +42,19 @@ class EpgDb(context: AppContext) {
     /** Wie auf Android: Bricht das Einlesen ab, bleibt das alte Programm stehen. */
     fun import(
         account: String,
-        input: InputStream,
+        sources: List<() -> InputStream>,
         from: Long,
         to: Long,
         keyFor: (id: String, names: List<String>) -> List<String>,
         onProgress: (Int) -> Unit,
         isCancelled: () -> Boolean,
+        onSourceFailed: (index: Int, error: Exception) -> Unit = { _, _ -> },
     ): Int {
-        val names = HashMap<String, MutableList<String>>()
-        val keys = HashMap<String, List<String>>()
+        // Kennen mehrere Quellen einen Sender, gilt die erste
+        val owner = HashMap<String, Int>()
         var count = 0
+        var failed: Exception? = null
+        var worked = 0
         connect().use { db ->
             db.autoCommit = false
             try {
@@ -60,25 +63,45 @@ class EpgDb(context: AppContext) {
                     it.executeUpdate()
                 }
                 db.prepareStatement("INSERT INTO prog VALUES (?, ?, ?, ?, ?, ?)").use { insert ->
-                    Xmltv.parse(
-                        input,
-                        onChannel = { id, name -> names.getOrPut(id) { ArrayList(1) }.add(name) },
-                        onProgramme = { p ->
-                            if (isCancelled()) throw InterruptedException()
-                            if (p.stop >= from && p.start <= to) {
-                                for (key in keys.getOrPut(p.channel) { keyFor(p.channel, names[p.channel].orEmpty()) }) {
-                                    insert.setString(1, account)
-                                    insert.setString(2, key)
-                                    insert.setLong(3, p.start)
-                                    insert.setLong(4, p.stop)
-                                    insert.setString(5, p.title)
-                                    insert.setString(6, p.description)
-                                    insert.executeUpdate()
-                                    if (++count % 2000 == 0) onProgress(count)
-                                }
+                    sources.forEachIndexed { index, source ->
+                        val names = HashMap<String, MutableList<String>>()
+                        val keys = HashMap<String, List<String>>()
+                        try {
+                            source().use { input ->
+                                Xmltv.parse(
+                                    input,
+                                    onChannel = { id, name -> names.getOrPut(id) { ArrayList(1) }.add(name) },
+                                    onProgramme = { p ->
+                                        if (isCancelled()) throw InterruptedException()
+                                        if (p.stop >= from && p.start <= to) {
+                                            val targets = keys.getOrPut(p.channel) {
+                                                keyFor(p.channel, names[p.channel].orEmpty()).filter { owner.getOrPut(it) { index } == index }
+                                            }
+                                            for (key in targets) {
+                                                insert.setString(1, account)
+                                                insert.setString(2, key)
+                                                insert.setLong(3, p.start)
+                                                insert.setLong(4, p.stop)
+                                                insert.setString(5, p.title)
+                                                insert.setString(6, p.description)
+                                                insert.executeUpdate()
+                                                if (++count % 2000 == 0) onProgress(count)
+                                            }
+                                        }
+                                    },
+                                )
                             }
-                        },
-                    )
+                            worked++
+                        } catch (e: InterruptedException) {
+                            throw e
+                        } catch (e: Exception) {
+                            if (isCancelled()) throw InterruptedException()
+                            failed = e
+                            onSourceFailed(index, e)
+                        }
+                    }
+                    // Keine Quelle ging: Das alte Programm bleibt stehen
+                    if (worked == 0) failed?.let { throw it }
                 }
                 db.prepareStatement("INSERT OR REPLACE INTO info VALUES (?, ?, ?)").use {
                     it.setString(1, account)

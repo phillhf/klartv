@@ -33,7 +33,8 @@ class ExoEngine(context: Context) : Engine {
     override val name = "ExoPlayer"
     override var listener: Engine.Listener? = null
 
-    private val player: ExoPlayer = Players.create(context)
+    private val delay = io.github.phillhf.iptv.AudioDelay()
+    private val player: ExoPlayer = Players.create(context, delay = delay)
     private val playerView = PlayerView(context).apply {
         useController = false
         isFocusable = false
@@ -192,6 +193,10 @@ class ExoEngine(context: Context) : Engine {
     }
 
     override fun setSpeed(speed: Float) = player.setPlaybackSpeed(speed)
+
+    override fun setAudioDelay(ms: Int) {
+        delay.ms = ms
+    }
 
     override fun setScale(mode: ScaleMode) {
         playerView.resizeMode = when (mode) {

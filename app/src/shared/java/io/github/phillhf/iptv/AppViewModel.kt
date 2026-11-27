@@ -19,6 +19,7 @@ import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Custom
 import io.github.phillhf.iptv.data.EpgDb
 import io.github.phillhf.iptv.data.EpgEntry
+import io.github.phillhf.iptv.data.EpgImport
 import io.github.phillhf.iptv.data.Episode
 import io.github.phillhf.iptv.data.Http
 import io.github.phillhf.iptv.data.Kind
@@ -27,18 +28,22 @@ import io.github.phillhf.iptv.data.Load
 import io.github.phillhf.iptv.data.M3uBackend
 import io.github.phillhf.iptv.data.Profile
 import io.github.phillhf.iptv.data.ProfileStore
+import io.github.phillhf.iptv.data.RecordRule
+import io.github.phillhf.iptv.data.RecordRules
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.data.SeriesInfo
 import io.github.phillhf.iptv.data.SourceType
 import io.github.phillhf.iptv.data.Stream
 import io.github.phillhf.iptv.data.Tmdb
 import io.github.phillhf.iptv.data.VodInfo
-import io.github.phillhf.iptv.data.Xmltv
 import io.github.phillhf.iptv.data.XtreamBackend
 import io.github.phillhf.iptv.data.customized
 import io.github.phillhf.iptv.data.friendlyError
 import io.github.phillhf.iptv.data.looksAdult
 import io.github.phillhf.iptv.data.moveInOrder
+import io.github.phillhf.iptv.platform.hasHomeRows
+import io.github.phillhf.iptv.platform.publishHomeRows
+import io.github.phillhf.iptv.data.shifted
 import io.github.phillhf.iptv.platform.AppApplication
 import io.github.phillhf.iptv.platform.AppContext
 import io.github.phillhf.iptv.platform.BaseViewModel
@@ -46,6 +51,7 @@ import io.github.phillhf.iptv.platform.openPlayer
 import io.github.phillhf.iptv.sync.SyncLink
 import io.github.phillhf.iptv.transfer.Stores
 import io.github.phillhf.iptv.transfer.Transfer
+import io.github.phillhf.iptv.transfer.TransferType
 import io.github.phillhf.iptv.transfer.Transfers
 import io.github.phillhf.iptv.ui.Tab
 import kotlinx.coroutines.CancellationException
@@ -72,7 +78,8 @@ sealed interface EpgState {
     data object Idle : EpgState
     data object None : EpgState
     data class Loading(val count: Int) : EpgState
-    data class Ready(val time: Long, val count: Int) : EpgState
+    /** [failed]: so viele der Quellen gingen nicht. */
+    data class Ready(val time: Long, val count: Int, val failed: Int = 0) : EpgState
     data class Error(val message: String) : EpgState
 }
 
@@ -133,6 +140,10 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         private set
 
     private val catalogs = mutableStateMapOf<Kind, Load<Catalog>>()
+
+    /** Wann die Listen zuletzt vom Anbieter kamen, für das automatische Neuladen. */
+    private val loadedAt = HashMap<Kind, Long>()
+    private var refreshJob: Job? = null
     private val vodInfos = mutableStateMapOf<String, VodInfo>()
     private val jobs = HashMap<Kind, Job>()
     private var statusJob: Job? = null
@@ -220,7 +231,48 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     var pendingChannel by mutableStateOf<String?>(null)
 
     init {
+        RecordRules.init(app)
         (accounts.firstOrNull { it.id == store.activeId } ?: accounts.firstOrNull())?.let { activate(it, backendFor(it)) }
+        refreshJob = viewModelScope.launch {
+            while (true) {
+                delay(10 * 60_000L)
+                autoRefresh()
+            }
+        }
+    }
+
+    /**
+     * Läuft die App lange (Fernseher mit Dauersender), Senderliste, Filme, Serien und Programm in den eingestellten
+     * Abständen neu holen. Die alten Listen bleiben stehen, bis die neuen da sind, und auch, wenn es nicht klappt.
+     */
+    internal fun autoRefresh(now: Long = System.currentTimeMillis()) {
+        val b = backend ?: return
+        applyRecordRules()
+        val maxAge = AppSettings.refreshMs
+        if (maxAge == Long.MAX_VALUE) return
+        val due = Kind.entries.filter { k -> catalogs[k] is Load.Ready<*> && now - (loadedAt[k] ?: now) >= maxAge && jobs[k]?.isActive != true }
+        if (due.isNotEmpty()) {
+            (b as? M3uBackend)?.reset()
+            val format = liveFormat
+            due.forEach { kind ->
+                jobs[kind] = viewModelScope.launch {
+                    val fresh = runCatching { withContext(Dispatchers.IO) { b.catalog(kind, format) } }.getOrNull()
+                    if (fresh != null && fresh.streams.isNotEmpty() && backend === b) {
+                        catalogs[kind] = Load.Ready(fresh)
+                        loadedAt[kind] = System.currentTimeMillis()
+                        if (kind == Kind.LIVE) {
+                            nowEpg.clear()
+                            epgCache.clear()
+                            epgRequested.clear()
+                        }
+                    } else {
+                        // Nächster Versuch beim nächsten Durchgang in einer Stunde
+                        loadedAt[kind] = System.currentTimeMillis() - maxAge + 3_600_000L
+                    }
+                }
+            }
+        }
+        refreshEpg(force = false)
     }
 
     // ---------- Konten ----------
@@ -231,6 +283,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         statusJob?.cancel()
         focusJob?.cancel()
         catalogs.clear()
+        loadedAt.clear()
         lastCategory.clear()
         vodInfos.clear()
         nowEpg.clear()
@@ -278,6 +331,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
             covers.clear()
             covers.putAll(it.covers())
         }
+        publishHome()
     }
 
     // ---------- Profile ----------
@@ -369,19 +423,37 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
                 store.activeId = null
                 stack.clear()
                 stack.add(Screen.Home)
+                publishHome()
             }
         }
     }
 
-    /** Eigene Adresse für den Programmführer; leer nimmt die des Anbieters. */
-    fun updateEpgUrl(url: String) {
-        val a = active ?: return
-        val changed = a.copy(epgUrl = url.trim())
+    private fun changeAccount(change: (Account) -> Account): Account? {
+        val a = active ?: return null
+        val changed = change(a)
         accounts = accounts.map { if (it.id == a.id) changed else it }
         active = changed
         store.save(accounts)
+        return changed
+    }
+
+    /** Eigene Programmführer-Quellen und ob der des Anbieters dazukommt; lädt alles neu. */
+    fun updateEpgSources(urls: List<String>, provider: Boolean) {
+        changeAccount { it.copy(epgUrls = urls.map { u -> u.trim() }.filter { u -> u.isNotEmpty() }.distinct(), epgProvider = provider) } ?: return
         refreshEpg(force = true)
     }
+
+    /** Verschiebt alle Sendezeiten; gilt sofort, ohne neu zu laden. */
+    fun updateEpgShift(minutes: Int) {
+        changeAccount { it.copy(epgShift = minutes.coerceIn(-Account.EPG_SHIFT_MAX, Account.EPG_SHIFT_MAX)) } ?: return
+        epgCache.clear()
+        epgRequested.clear()
+        fullEpgCache.clear()
+        nowEpg.clear()
+    }
+
+    /** Verschiebung der Sendezeiten des aktiven Anbieters in ms. */
+    private val epgShiftMs: Long get() = (active?.epgShift ?: 0) * 60_000L
 
     fun updateLiveFormat(format: String) {
         if (format == liveFormat) return
@@ -535,6 +607,46 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         }
     }
 
+    // ---------- Startbildschirm des Fernsehers ----------
+
+    private var homeJob: Job? = null
+
+    /** Gehört zu einer gesperrten Kategorie, egal ob gerade entsperrt; im Zweifel ja. */
+    private fun lockedForever(key: String): Boolean {
+        if (!AppSettings.hasPin) return false
+        val kind = runCatching { Kind.valueOf(key.substringBefore(':')) }.getOrNull() ?: return false
+        val raw = rawCatalog(kind) ?: return true
+        val s = raw.byKey[key] ?: return false
+        return s.categoryId in lockedIds(kind, raw)
+    }
+
+    /** „Weiterschauen“ und Lieblingssender auf den Startbildschirm, kurz gesammelt. Gesperrtes kommt nie dorthin. */
+    private fun publishHome() {
+        if (!hasHomeRows(app)) return
+        homeJob?.cancel()
+        homeJob = viewModelScope.launch {
+            delay(1500)
+            val a = active
+            if (a == null) {
+                withContext(Dispatchers.IO) { publishHomeRows(app, null, emptyList(), emptyList()) }
+                return@launch
+            }
+            // Ohne Senderliste ließe sich nicht prüfen, was gesperrt ist; dann lieber warten
+            val live = readyCatalog(Kind.LIVE) ?: return@launch
+            val continued = continueList.filterNot { lockedForever(it.parentKey) }
+            val channels = favorites.filter { it.startsWith("LIVE:") }.mapNotNull { live.byKey[it] }.filterNot { lockedForever(it.key) }
+            withContext(Dispatchers.IO) { publishHomeRows(app, a.id, continued, channels) }
+        }
+    }
+
+    /** Vom Startbildschirm: an der gemerkten Stelle weiterschauen. */
+    fun playFromHome(context: AppContext, account: String, key: String) {
+        if (active?.id != account) accounts.firstOrNull { it.id == account }?.let { select(it) } ?: return
+        val e = continueList.firstOrNull { it.key == key } ?: return
+        choosingProfile = false
+        if (AppSettings.hasPin && !unlocked && lockedForever(e.parentKey)) requirePin { playContinue(context, e) } else playContinue(context, e)
+    }
+
     // ---------- Erinnerungen ----------
 
     fun remind(s: Stream, e: EpgEntry) {
@@ -585,6 +697,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         val now = if (lock) base + key else base - key
         locked = now
         library?.saveLockedCategories(now)
+        publishHome()
     }
 
     /** Führt [action] aus, wenn keine PIN gesetzt oder schon entsperrt ist, sonst nach Eingabe der PIN. */
@@ -634,13 +747,14 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         catalogs[kind] = Load.Loading
         jobs[kind] = viewModelScope.launch {
             catalogs[kind] = try {
-                Load.Ready(withContext(Dispatchers.IO) { b.catalog(kind, format) })
+                Load.Ready(withContext(Dispatchers.IO) { b.catalog(kind, format) }).also { loadedAt[kind] = System.currentTimeMillis() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 Load.Error(friendlyError(e))
             }
             if (kind == Kind.LIVE) refreshEpg(force = false)
+            publishHome()
         }
     }
 
@@ -722,10 +836,9 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     val hasEpg: Boolean get() = backend?.hasEpg == true || (epgState as? EpgState.Ready)?.let { it.count > 0 } == true
 
     /** Mit dem Namen des Anbieters, auch wenn der Nutzer den Sender umbenannt hat. */
-    private fun epgKey(s: Stream): String = s.epgId?.trim()?.lowercase()?.ifEmpty { null }
-        ?: ("n:" + Xmltv.normalizeName(rawCatalog(s.kind)?.byKey?.get(s.key)?.name ?: s.name))
+    private fun epgKey(s: Stream): String = EpgImport.key(s, rawCatalog(s.kind)?.byKey?.get(s.key)?.name ?: s.name)
 
-    /** Liest den Programmführer des Anbieters ein, wenn er älter als zwölf Stunden ist oder [force]. */
+    /** Liest den Programmführer ein, wenn er älter als in den Einstellungen festgelegt ist, gar keiner da ist oder [force]. */
     fun refreshEpg(force: Boolean) {
         val a = active ?: return
         val b = backend ?: return
@@ -735,49 +848,31 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         epgJob = viewModelScope.launch {
             try {
                 val old = withContext(Dispatchers.IO) { epgDb.info(a.id) }
-                if (!force && old != null && System.currentTimeMillis() - old.time < 12 * 3_600_000L) {
+                if (!force && old != null && System.currentTimeMillis() - old.time < AppSettings.refreshMs) {
                     epgState = EpgState.Ready(old.time, old.count)
+                    applyRecordRules()
                     return@launch
                 }
-                val url = withContext(Dispatchers.IO) { a.epgUrl.ifBlank { b.epgUrl().orEmpty() } }
-                if (url.isBlank()) {
+                val urls = withContext(Dispatchers.IO) { EpgImport.urls(a) { b.epgUrl() } }
+                if (urls.isEmpty()) {
                     epgState = EpgState.None
                     return@launch
                 }
                 epgState = EpgState.Loading(0)
                 val context = currentCoroutineContext()
-                val count = withContext(Dispatchers.IO) {
-                    val ids = live.mapNotNullTo(HashSet()) { it.epgId?.trim()?.lowercase()?.ifEmpty { null } }
-                    val names = live.filter { it.epgId.isNullOrBlank() }.mapTo(HashSet()) { Xmltv.normalizeName(it.name) }
-                    names.remove("")
-                    val back = live.maxOf { it.archiveDays }.coerceIn(1, 7)
-                    val now = System.currentTimeMillis()
-                    val conn = Http.open(url)
-                    try {
-                        epgDb.import(
-                            a.id,
-                            conn.inputStream,
-                            from = now - back * 86_400_000L,
-                            to = now + 4 * 86_400_000L,
-                            keyFor = { id, shown ->
-                                buildList {
-                                    val key = id.trim().lowercase()
-                                    if (key in ids) add(key)
-                                    shown.map { Xmltv.normalizeName(it) }.filter { it in names }.distinct().forEach { add("n:$it") }
-                                }
-                            },
-                            onProgress = { n -> viewModelScope.launch { if (epgState is EpgState.Loading) epgState = EpgState.Loading(n) } },
-                            isCancelled = { !context.isActive },
-                        )
-                    } finally {
-                        conn.disconnect()
-                    }
+                val result = withContext(Dispatchers.IO) {
+                    EpgImport.run(
+                        epgDb, a, urls, live,
+                        onProgress = { n -> viewModelScope.launch { if (epgState is EpgState.Loading) epgState = EpgState.Loading(n) } },
+                        isCancelled = { !context.isActive },
+                    )
                 }
                 epgCache.clear()
                 epgRequested.clear()
                 fullEpgCache.clear()
                 nowEpg.clear()
-                epgState = EpgState.Ready(System.currentTimeMillis(), count)
+                epgState = EpgState.Ready(System.currentTimeMillis(), result.count, result.failed)
+                applyRecordRules()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -790,12 +885,15 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
     suspend fun programmes(s: Stream, from: Long, to: Long): List<EpgEntry> {
         val a = active ?: return emptyList()
         val b = backend ?: return emptyList()
-        val stored = withContext(Dispatchers.IO) { runCatching { epgDb.programmes(a.id, epgKey(s), from, to) }.getOrDefault(emptyList()) }
+        val shift = epgShiftMs
+        val stored = withContext(Dispatchers.IO) {
+            runCatching { epgDb.programmes(a.id, epgKey(s), from - shift, to - shift) }.getOrDefault(emptyList()).shifted(shift)
+        }
         if (stored.isNotEmpty() || !b.hasEpg) return stored
         val all = fullEpgCache[s.id] ?: epgLimit.withPermit {
             withContext(Dispatchers.IO) { runCatching { b.fullEpg(s.id).ifEmpty { b.epg(s.id) } }.getOrDefault(emptyList()) }
         }.also { fullEpgCache[s.id] = it }
-        return all.filter { it.end > from && it.start < to }
+        return all.shifted(shift).filter { it.end > from && it.start < to }
     }
 
     /** Programm des Senders, fünf Minuten zwischengespeichert. */
@@ -806,9 +904,10 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         val now = System.currentTimeMillis()
         epgCache[id]?.let { (time, list) -> if (now - time < 5 * 60_000) return list }
         val stream = rawCatalog(Kind.LIVE)?.byKey?.get("LIVE:$id")
+        val shift = epgShiftMs
         val list = withContext(Dispatchers.IO) {
-            val stored = stream?.let { s -> runCatching { epgDb.programmes(a.id, epgKey(s), now - 3_600_000, now + 12 * 3_600_000) }.getOrNull() }
-            if (!stored.isNullOrEmpty() || !b.hasEpg) stored.orEmpty() else b.epg(id)
+            val stored = stream?.let { s -> runCatching { epgDb.programmes(a.id, epgKey(s), now - 3_600_000 - shift, now + 12 * 3_600_000 - shift) }.getOrNull() }
+            (if (!stored.isNullOrEmpty() || !b.hasEpg) stored.orEmpty() else b.epg(id)).shifted(shift)
         }
         epgCache[id] = now to list
         nowEpg[id] = list
@@ -836,6 +935,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
 
     fun toggleFavorite(s: Stream) {
         library?.let { favorites = it.toggleFavorite(s.key) }
+        publishHome()
     }
 
     fun isFavorite(key: String): Boolean = key in favoriteSet
@@ -847,6 +947,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
 
     fun moveFavorite(s: Stream, up: Boolean) {
         library?.let { favorites = it.moveFavorite(s.key, up) }
+        publishHome()
     }
 
     // ---------- Catch-up, Aufnahmen und Downloads ----------
@@ -871,6 +972,42 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         viewModelScope.launch {
             val item = catchupItem(s, e)
             if (item != null) play(context, listOf(item), 0) else failed()
+        }
+    }
+
+    // ---------- Serienaufnahmen ----------
+
+    private var rulesJob: Job? = null
+
+    /** Neue Regel: gleich einplanen, was sie findet. */
+    fun addRecordRule(rule: RecordRule) {
+        RecordRules.add(rule)
+        applyRecordRules(force = true)
+    }
+
+    /** Regel weg; schon eingeplante Aufnahmen bleiben, damit nichts überraschend verschwindet. */
+    fun removeRecordRule(rule: RecordRule) = RecordRules.remove(rule)
+
+    /** Plant für alle Regeln des Anbieters ein, was im Programm neu dazugekommen ist. */
+    fun applyRecordRules(force: Boolean = false) {
+        val a = active ?: return
+        val live = rawCatalog(Kind.LIVE) ?: return
+        val rules = RecordRules.list.filter { it.account == a.id }
+        if (rules.isEmpty() || (rulesJob?.isActive == true && !force)) return
+        rulesJob?.cancel()
+        rulesJob = viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            for (rule in rules) {
+                val s = live.byKey[rule.channelKey] ?: continue
+                val guide = runCatching { programmes(s, now - 86_400_000L, now + RecordRules.AHEAD) }.getOrDefault(emptyList())
+                val wanted = RecordRules.plan(rule, now, { from, to -> guide.filter { it.end > from && it.start < to } })
+                val handled = ArrayList<Long>()
+                for (p in wanted) {
+                    val exists = Transfers.list.any { it.type == TransferType.RECORD && it.key == s.key && (it.endAt == p.end || it.startAt == p.start) }
+                    if (exists || Transfers.record(s.key, p.title, s.name, s.logo, s.recordUrl() ?: s.url, p.start, p.end)) handled += p.programmeStart
+                }
+                if (handled.isNotEmpty()) RecordRules.markPlanned(rule, handled, now)
+            }
         }
     }
 
@@ -917,6 +1054,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
             continueList = it.continueList()
             watched = it.watched()
         }
+        publishHome()
     }
 
     // ---------- Gesehen ----------
@@ -928,6 +1066,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         val lib = library ?: return
         watched = lib.setWatched(keys, on)
         continueList = lib.continueList()
+        publishHome()
     }
 
     /** Gesehene und alle Folgen einer Serie, sobald sie einmal geöffnet war. */
@@ -955,6 +1094,7 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
             it.clearPosition(entry.key)
             continueList = it.continueList()
         }
+        publishHome()
     }
 
     fun play(context: AppContext, items: List<PlayItem>, index: Int) {
@@ -970,11 +1110,13 @@ class AppViewModel(private val app: AppApplication) : BaseViewModel(app) {
         PlaybackQueue.epg = { epg(it) }
         PlaybackQueue.onWatched = { refreshLibrary() }
         PlaybackQueue.catchup = { item, e -> rawCatalog(Kind.LIVE)?.byKey?.get(item.key)?.let { catchupItem(it, e) } }
+        val account = active?.id
         PlaybackQueue.onPlay = { item ->
             if (!item.local) {
                 lib.addRecent(item.recentKey)
                 recent = lib.recent()
             }
+            if (item.live && !item.catchup && !item.local && account != null) AppSettings.lastChannel = account + "\n" + item.key
         }
         context.openPlayer()
     }

@@ -381,7 +381,10 @@ class Web(
                     // Leer = unverändert, das Passwort wird nie an den Browser gegeben
                     password = b.optString("password").ifEmpty { old?.password.orEmpty() },
                     m3uUrl = b.optString("m3uUrl").trim().ifEmpty { old?.m3uUrl.orEmpty() },
-                    epgUrl = b.optString("epgUrl").trim(),
+                    // Programmführer wird unter „Programmführer“ eingestellt
+                    epgUrls = old?.epgUrls.orEmpty(),
+                    epgProvider = old?.epgProvider ?: true,
+                    epgShift = old?.epgShift ?: 0,
                 )
                 try {
                     core.saveAccount(a)
@@ -396,6 +399,23 @@ class Web(
             }
             "accounts/activate" -> {
                 core.activate(r.body().getString("id"))
+                send(ex, 200, ok())
+            }
+            "epg/settings" -> {
+                // Ohne Anmeldung beim Anbieter: Es ändert sich nur, woher das Programm kommt
+                val b = r.body()
+                val a = core.active ?: throw BadRequest("Noch kein Anbieter eingerichtet.")
+                val urls = if (b.has("urls")) Account.parseUrls(b.getString("urls")) else a.epgUrls
+                if (urls.any { !it.startsWith("http://", true) && !it.startsWith("https://", true) }) {
+                    throw BadRequest("Jede Adresse muss mit http:// oder https:// beginnen.")
+                }
+                val changed = a.copy(
+                    epgUrls = urls,
+                    epgProvider = if (b.has("provider")) b.getBoolean("provider") else a.epgProvider,
+                    epgShift = if (b.has("shift")) b.getInt("shift").coerceIn(-Account.EPG_SHIFT_MAX, Account.EPG_SHIFT_MAX) else a.epgShift,
+                )
+                if (b.has("refreshHours")) AppSettings.refreshHours = b.getInt("refreshHours").coerceIn(0, 168)
+                core.updateEpg(changed, reload = changed.epgUrls != a.epgUrls || changed.epgProvider != a.epgProvider)
                 send(ex, 200, ok())
             }
             "epg/refresh" -> {
@@ -526,12 +546,14 @@ class Web(
             .put("active", a?.id ?: "")
             .put("accounts", JSONArray(core.accounts().map { acc ->
                 JSONObject().put("id", acc.id).put("name", acc.name).put("type", acc.type.name).put("server", acc.server)
-                    .put("username", acc.username).put("hasM3u", acc.m3uUrl.isNotEmpty()).put("epgUrl", acc.epgUrl)
+                    .put("username", acc.username).put("hasM3u", acc.m3uUrl.isNotEmpty()).put("epgUrls", acc.epgUrls.joinToString("\n"))
+                    .put("epgProvider", acc.epgProvider).put("epgShift", acc.epgShift)
                     .put("hasPassword", acc.password.isNotEmpty())
             }))
             .put("hasPin", AppSettings.hasPin)
             .put("unlocked", session.unlocked)
             .put("userAgent", AppSettings.userAgent)
+            .put("refreshHours", AppSettings.refreshHours)
             .put("audioLanguage", AppSettings.audioLanguage)
             .put("liveFormat", core.liveFormat)
             .put("epg", core.epgStatus)

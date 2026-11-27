@@ -188,13 +188,29 @@ class WindowsTest {
         fun time(ms: Long) = java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(java.time.ZoneOffset.UTC).format(java.time.Instant.ofEpochMilli(ms))
         fun show(i: Int) = "<programme channel=\"a\" start=\"${time(now + i * 1_800_000L)}\" stop=\"${time(now + (i + 1) * 1_800_000L)}\"><title>Nr. $i</title></programme>"
         val xml = "<tv><channel id=\"a\"><display-name>A</display-name></channel>${(0 until 10).joinToString("") { show(it) }}</tv>rest < &"
-        val n = db.import("x", xml.byteInputStream(), now - 1, now + 86_400_000, { id, _ -> listOf(id) }, {}, { false })
+        val n = db.import("x", listOf({ xml.byteInputStream() }), now - 1, now + 86_400_000, { id, _ -> listOf(id) }, {}, { false })
         assertEquals(10, n)
         assertEquals(10, db.info("x")!!.count)
         assertEquals("Nr. 0", db.programmes("x", "a", now, now + 86_400_000).first().title)
         // Abgebrochen: das alte Programm bleibt
-        runCatching { db.import("x", "<html>".byteInputStream(), 0, Long.MAX_VALUE, { id, _ -> listOf(id) }, {}, { false }) }
+        runCatching { db.import("x", listOf({ "<html>".byteInputStream() }), 0, Long.MAX_VALUE, { id, _ -> listOf(id) }, {}, { false }) }
         assertEquals(10, db.programmes("x", "a", now - 1, now + 86_400_000).size)
+
+        // Mehrere Quellen: Sender „a“ aus der ersten, „b“ nur in der zweiten; eine kaputte Quelle stört nicht
+        val second = "<tv>" + (0 until 3).joinToString("") {
+            show(it).replace("channel=\"a\"", "channel=\"b\"") + show(it).replace("Nr.", "Zweit")
+        } + "</tv>"
+        var failed = 0
+        val m = db.import(
+            "x",
+            listOf({ xml.byteInputStream() }, { throw java.io.IOException("weg") }, { second.byteInputStream() }),
+            now - 1, now + 86_400_000, { id, _ -> listOf(id) }, {}, { false },
+            onSourceFailed = { i, _ -> failed += i },
+        )
+        assertEquals(13, m)
+        assertEquals(1, failed)
+        assertTrue(db.programmes("x", "a", now - 1, now + 86_400_000).all { it.title.startsWith("Nr.") })
+        assertEquals(3, db.programmes("x", "b", now - 1, now + 86_400_000).size)
         db.remove("x")
         assertNull(db.info("x"))
     }

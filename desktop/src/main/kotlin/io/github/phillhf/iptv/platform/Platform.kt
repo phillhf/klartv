@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import io.github.phillhf.iptv.data.ContinueEntry
 import io.github.phillhf.iptv.data.Reminder
+import io.github.phillhf.iptv.data.Stream
 import io.github.phillhf.iptv.data.Reminders
 import io.github.phillhf.iptv.player.PlayerHost
 import java.awt.Desktop
@@ -133,6 +135,23 @@ fun AppContext.openPlayer() = PlayerHost.open()
 
 @Suppress("UNUSED_PARAMETER")
 fun isTv(context: AppContext): Boolean = false
+
+/** Nur Android TV und Google TV haben Reihen auf dem Startbildschirm. */
+fun publishHomeRows(
+    @Suppress("UNUSED_PARAMETER") context: AppContext,
+    @Suppress("UNUSED_PARAMETER") account: String?,
+    @Suppress("UNUSED_PARAMETER") continueList: List<ContinueEntry>,
+    @Suppress("UNUSED_PARAMETER") channels: List<Stream>,
+) = Unit
+
+fun hasHomeRows(@Suppress("UNUSED_PARAMETER") context: AppContext): Boolean = false
+
+/** Beim Einschalten starten gibt es nur auf Android-Geräten. */
+fun canAutostart(@Suppress("UNUSED_PARAMETER") context: AppContext): Boolean = false
+
+fun autostartBlocked(@Suppress("UNUSED_PARAMETER") context: AppContext): Boolean = false
+
+fun openAutostartPermission(@Suppress("UNUSED_PARAMETER") context: AppContext): Boolean = false
 
 /** Windows meldet Wiederholungen nicht; erst nach dem Loslassen zählt ein Tastendruck wieder. */
 @Suppress("UNUSED_PARAMETER")

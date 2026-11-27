@@ -195,6 +195,7 @@ class VlcPlayer(maxWidth: Int = 1920, maxHeight: Int = 1080) {
                     run {
                         vlc.libvlc_media_player_set_rate(player, speed)
                         applyVolume()
+                        vlc.libvlc_audio_set_delay(player, audioDelayMs * 1000L)
                     }
                     ui {
                         listener?.onBuffering(false)
@@ -320,6 +321,14 @@ class VlcPlayer(maxWidth: Int = 1920, maxHeight: Int = 1080) {
     fun setSpeed(value: Float) {
         speed = value
         run { vlc.libvlc_media_player_set_rate(player, value) }
+    }
+
+    /** Tonversatz in ms, positiv = Ton später. VLC vergisst ihn bei jedem neuen Medium, deshalb auch beim Abspielen setzen. */
+    @Volatile private var audioDelayMs = 0
+
+    fun setAudioDelay(ms: Int) {
+        audioDelayMs = ms
+        run { vlc.libvlc_audio_set_delay(player, ms * 1000L) }
     }
 
     /** 0..1 */
