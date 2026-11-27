@@ -40,7 +40,7 @@ import kotlin.concurrent.thread
  */
 object SyncData {
     /** Gehört zum Gerät und bleibt beim Abgleich, wie es ist. */
-    private val deviceOnly = setOf("matchFrameRate", "storeTarget")
+    private val deviceOnly = setOf("matchFrameRate", "storeTarget", "diagnostics")
 
     private fun names(context: AppContext): List<String> {
         val profiles = ProfileStore(context).all()

@@ -184,6 +184,24 @@ class VlcEngine(context: Context) : Engine {
         }
     }
 
+    override fun stats(): PlaybackStats {
+        if (released) return PlaybackStats()
+        val media = player.media ?: return PlaybackStats()
+        return try {
+            val s = media.stats ?: return PlaybackStats()
+            PlaybackStats(
+                dropped = s.lostPictures.toLong(),
+                shown = s.displayedPictures.toLong(),
+                // VLC rechnet in Byte je Millisekunde
+                bitrateKbps = (s.inputBitrate * 8000).toInt().takeIf { it > 0 } ?: -1,
+            )
+        } catch (_: Exception) {
+            PlaybackStats()
+        } finally {
+            media.release()
+        }
+    }
+
     override fun release() {
         if (released) return
         released = true

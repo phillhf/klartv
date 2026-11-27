@@ -261,9 +261,11 @@ class VlcPlayer(maxWidth: Int = 1920, maxHeight: Int = 1080) {
         ready = false
         ended = false
         textChosen = AppSettings.subtitlesOn
+        lastStats = PlaybackStats()
         run {
             vlc.libvlc_media_player_stop(player)
             ready = false
+            lastStats = PlaybackStats()
             val media = vlc.libvlc_media_new_location(Vlc.instance(Vlc.options()), item.url) ?: return@run
             vlc.libvlc_media_add_option(media, ":http-user-agent=${Http.USER_AGENT}")
             if (positionMs > 0) vlc.libvlc_media_add_option(media, ":start-time=${positionMs / 1000}")
@@ -329,6 +331,31 @@ class VlcPlayer(maxWidth: Int = 1920, maxHeight: Int = 1080) {
     private fun applyVolume() {
         vlc.libvlc_audio_set_volume(player, (volume * 100).roundToInt().coerceIn(0, 100))
         vlc.libvlc_audio_set_mute(player, if (volume <= 0f) 1 else 0)
+    }
+
+    @Volatile
+    private var lastStats = PlaybackStats()
+    private val statsBuffer = Memory(64)
+
+    /** Letzte bekannte Werte; holt im Hintergrund schon die nächsten. */
+    fun stats(): PlaybackStats {
+        run {
+            val media = vlc.libvlc_media_player_get_media(player) ?: return@run
+            try {
+                // libvlc_media_stats_t: lauter 4-Byte-Felder, Datenrate in Byte je Millisekunde
+                if (vlc.libvlc_media_get_stats(media, statsBuffer) != 0) {
+                    val bitrate = (statsBuffer.getFloat(4) * 8000).toInt()
+                    lastStats = PlaybackStats(
+                        dropped = statsBuffer.getInt(36).toLong(),
+                        shown = statsBuffer.getInt(32).toLong(),
+                        bitrateKbps = bitrate.takeIf { it > 0 } ?: -1,
+                    )
+                }
+            } finally {
+                vlc.libvlc_media_release(media)
+            }
+        }
+        return lastStats
     }
 
     fun release() {

@@ -83,6 +83,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -117,6 +118,14 @@ fun PlayerScreen(ui: PlayerUi, actions: PlayerActions) {
             },
         ) {
             PlayerOverlay(ui.item, ui.epg, ui.info && !ui.controls && ui.panel == null, ui.message)
+            ui.diagnostics?.let { lines ->
+                Column(
+                    Modifier.align(Alignment.TopStart).padding(16.dp).clip(CardShape).background(Color.Black.copy(alpha = 0.7f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    lines.forEach { Text(it, style = MaterialTheme.typography.labelMedium, fontFamily = FontFamily.Monospace) }
+                }
+            }
             if (ui.buffering) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Klar.Accent)
             if (ui.digits.isNotEmpty()) {
                 Box(

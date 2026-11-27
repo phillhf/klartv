@@ -166,6 +166,16 @@ fun SettingsScreen(vm: AppViewModel) {
                     AppSettings.matchFrameRate,
                 ) { AppSettings.matchFrameRate = it }
             }
+            SwitchRow(
+                t("Live-TV selbst reparieren"),
+                t("Baut einen Sender neu auf, wenn er nach längerer Zeit ruckelt, hängt oder Ton und Bild auseinanderlaufen, spätestens nach 3 Stunden. Das Bild ist dabei kurz schwarz."),
+                AppSettings.selfHeal,
+            ) { AppSettings.selfHeal = it }
+            SwitchRow(
+                t("Diagnose im Player"),
+                t("Zeigt oben links verlorene Bilder, Puffer, Abweichung zum Live-Bild und Speicher. Nur für die Fehlersuche."),
+                AppSettings.diagnostics,
+            ) { AppSettings.diagnostics = it }
             SwitchRow(t("Live-Vorschau"), t("Spielt den gewählten Sender in der Senderliste klein ab (TV und Tablet)."), vm.livePreview) { vm.updateLivePreview(it) }
             Text(t("Bevorzugte Tonsprache"))
             Options(languageChoices(), AppSettings.audioLanguage) { AppSettings.audioLanguage = it }

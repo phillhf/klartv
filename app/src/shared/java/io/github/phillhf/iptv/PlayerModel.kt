@@ -45,6 +45,9 @@ class PlayerUi {
     var text by mutableStateOf<List<Track>>(emptyList())
     var found by mutableStateOf<List<OpenSubtitles.Hit>?>(null)
 
+    /** Zeilen der Diagnose-Einblendung, null = aus. */
+    var diagnostics by mutableStateOf<List<String>?>(null)
+
     /** 0..1; null, wenn die Lautstärke nicht im Player geregelt wird (Handy und Fernseher). */
     var volume by mutableStateOf<Float?>(null)
     var canFullscreen by mutableStateOf(false)

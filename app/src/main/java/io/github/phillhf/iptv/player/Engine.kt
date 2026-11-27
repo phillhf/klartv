@@ -33,6 +33,9 @@ interface Engine {
     fun addSubtitle(uri: Uri, label: String)
     fun setSpeed(speed: Float)
     fun setScale(mode: ScaleMode)
+
+    /** Werte für Selbstheilung und Diagnose. */
+    fun stats(): PlaybackStats
     fun release()
 
     interface Listener {

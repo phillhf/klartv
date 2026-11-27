@@ -201,6 +201,20 @@ class ExoEngine(context: Context) : Engine {
         }
     }
 
+    override fun stats(): PlaybackStats {
+        val counters = player.videoDecoderCounters
+        counters?.ensureUpdated()
+        val offset = if (player.isCurrentMediaItemLive) player.currentLiveOffset else C.TIME_UNSET
+        val bitrate = player.videoFormat?.bitrate?.takeIf { it != Format.NO_VALUE } ?: -1
+        return PlaybackStats(
+            dropped = counters?.droppedBufferCount?.toLong() ?: -1,
+            shown = counters?.renderedOutputBufferCount?.toLong() ?: -1,
+            bufferedMs = player.totalBufferedDuration,
+            liveOffsetMs = if (offset == C.TIME_UNSET) -1 else offset,
+            bitrateKbps = if (bitrate > 0) bitrate / 1000 else -1,
+        )
+    }
+
     override fun release() {
         listener = null
         player.removeListener(events)

@@ -23,6 +23,7 @@ interface LibVlc : Library {
     fun libvlc_media_release(media: Pointer)
     fun libvlc_media_tracks_get(media: Pointer, tracks: PointerByReference): Int
     fun libvlc_media_tracks_release(tracks: Pointer, count: Int)
+    fun libvlc_media_get_stats(media: Pointer, stats: Pointer): Int
 
     fun libvlc_media_player_new(vlc: Pointer): Pointer?
     fun libvlc_media_player_release(player: Pointer)

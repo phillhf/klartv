@@ -72,6 +72,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
     private var hideMessage: Job? = null
     private var digitsJob: Job? = null
     private var lastVolume = 1f
+    private val health = PlaybackHealth()
 
     init {
         player.listener = this
@@ -92,7 +93,8 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
                 delay(500)
                 ui.position = player.positionMs
                 ui.duration = player.durationMs
-                if (++count % 20 == 0) savePosition()
+                if (++count % 2 == 0) checkHealth()
+                if (count % 20 == 0) savePosition()
                 if (ui.sleepAt in 1..System.currentTimeMillis()) close()
             }
         }
@@ -128,6 +130,7 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
         ui.canStartOver = false
         val at = position ?: if (item.live) 0L else PlaybackQueue.library?.position(item.key) ?: 0L
         player.sink.clear()
+        health.start(item.live, fresh = true)
         player.load(item, at)
         player.setSpeed(ui.speed)
         PlaybackQueue.onPlay?.invoke(item)
@@ -193,8 +196,42 @@ class PlayerSession(items: List<PlayItem>, index: Int) : PlayerActions, VlcPlaye
         val at = if (ui.item?.live == true) 0L else ui.position
         scope.launch {
             delay(1500L * retries)
-            if (ui.index == index) player.load(ui.items[index], at)
+            if (ui.index == index) {
+                health.start(ui.items[index].live, fresh = false)
+                player.load(ui.items[index], at)
+            }
         }
+    }
+
+    // ---------- Selbstheilung und Diagnose ----------
+
+    private fun checkHealth() {
+        val reason = health.sample(player.positionMs, ui.playing, ui.buffering, ui.speed, player.stats(), memory(), AppSettings.selfHeal)
+        ui.diagnostics = if (AppSettings.diagnostics) health.lines("VLC", AppSettings.selfHeal) else null
+        // Nicht mitten in eine Auswahl hinein; der Grund kommt beim nächsten Mal wieder
+        if (reason == null || ui.panel != null || ui.controls) return
+        val item = ui.item ?: return
+        health.healed(reason)
+        showMessage(t("Stream wird neu aufgebaut (%1) …", PlaybackHealth.reasonText(reason)), autoHide = true)
+        player.load(item, 0)
+    }
+
+    private fun memory(): MemoryStats {
+        val r = Runtime.getRuntime()
+        val mb = 1024 * 1024
+        // Ganzer Prozess samt VLC, wie im Task-Manager
+        val process = runCatching {
+            // PROCESS_MEMORY_COUNTERS (64 Bit): PagefileUsage = privater Speicher, steht bei Byte 56
+            val c = com.sun.jna.Memory(72).apply { clear(); setInt(0, 72) }
+            val f = com.sun.jna.Function.getFunction("kernel32", "K32GetProcessMemoryInfo")
+            val ok = f.invokeInt(arrayOf(com.sun.jna.platform.win32.Kernel32.INSTANCE.GetCurrentProcess(), c, 72)) != 0
+            if (ok) (c.getLong(56) / mb).toInt() else -1
+        }.getOrDefault(-1)
+        return MemoryStats(
+            heapMb = ((r.totalMemory() - r.freeMemory()) / mb).toInt(),
+            heapMaxMb = (r.maxMemory() / mb).toInt(),
+            processMb = process,
+        )
     }
 
     private fun refreshTracks() {

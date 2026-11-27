@@ -25,6 +25,7 @@ Einrichtung und Cloudflare-Tunnel: [server/README.md](server/README.md).
 - **Aufnahmen** (sofort oder geplant) und **Downloads**, beides im Hintergrund
 - **Zwei Player-Engines:** ExoPlayer und VLC; wechselt von selbst, wenn das Gerät ein Format nicht kann
 - Tonspuren, Untertitel (Größe, Farbe, eigene Dateien), Tempo, Bildformat, Schlaf-Timer, Bild im Bild, Chromecast
+- **Selbstheilung bei Live-TV:** Ruckelt ein Sender nach Stunden, hängt er oder laufen Ton und Bild auseinander, baut die App ihn neu auf (spätestens alle 3 Stunden); auf Wunsch mit Diagnose-Einblendung
 - **Kindersicherung** mit PIN, sortierbare Favoriten, Suche über alles
 - **Profile** für mehrere Personen: eigene Favoriten, eigener Verlauf, Weiterschauen, Gesehen-Haken und Erinnerungen
 - **Updates** unter Windows: Die App fragt bei einer neuen Version, der Server aktualisiert sich nachts selbst; installiert wird nur, was mit dem Release-Schlüssel signiert ist

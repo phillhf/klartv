@@ -37,6 +37,8 @@ import io.github.phillhf.iptv.data.friendlyError
 import io.github.phillhf.iptv.data.pickRefreshRate
 import io.github.phillhf.iptv.player.Engine
 import io.github.phillhf.iptv.player.ExoEngine
+import io.github.phillhf.iptv.player.MemoryStats
+import io.github.phillhf.iptv.player.PlaybackHealth
 import io.github.phillhf.iptv.player.ScaleMode
 import io.github.phillhf.iptv.player.VlcEngine
 import io.github.phillhf.iptv.transfer.Transfers
@@ -60,6 +62,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
     private var resumeAt = 0L
     private var wasReady = false
     private var started = false
+    private val health = PlaybackHealth()
 
     /** In AUTO gemerkt: dieser Eintrag braucht VLC. */
     private var forced: EngineChoice? = null
@@ -84,7 +87,8 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
                 ui.position = it.positionMs
                 ui.duration = it.durationMs
             }
-            if (++count % 20 == 0) savePosition()
+            if (++count % 2 == 0) checkHealth()
+            if (count % 20 == 0) savePosition()
             if (ui.sleepAt in 1..System.currentTimeMillis()) {
                 finish()
                 return
@@ -216,6 +220,7 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         ui.duration = 0
         ui.canStartOver = false
         val at = position ?: if (item.live) 0L else PlaybackQueue.library?.position(item.key) ?: 0L
+        health.start(item.live, fresh = true)
         engine?.load(item, at)
         PlaybackQueue.onPlay?.invoke(item)
         showInfo(item)
@@ -313,7 +318,37 @@ class PlayerActivity : ComponentActivity(), PlayerActions, Engine.Listener {
         showMessage(t("Verbindung unterbrochen – neuer Versuch (%1) …", retries), autoHide = true)
         val index = ui.index
         val at = if (ui.item?.live == true) 0L else ui.position
-        handler.postDelayed({ if (started && ui.index == index) engine?.load(ui.items[index], at) }, 1500L * retries)
+        handler.postDelayed({
+            if (started && ui.index == index) {
+                health.start(ui.items[index].live, fresh = false)
+                engine?.load(ui.items[index], at)
+            }
+        }, 1500L * retries)
+    }
+
+    // ---------- Selbstheilung und Diagnose ----------
+
+    private fun checkHealth() {
+        val e = engine ?: return
+        val stats = e.stats()
+        val reason = health.sample(e.positionMs, ui.playing, ui.buffering, ui.speed, stats, memory(), AppSettings.selfHeal)
+        ui.diagnostics = if (AppSettings.diagnostics) health.lines(e.name, AppSettings.selfHeal) else null
+        // Nicht mitten in eine Auswahl hinein; der Grund kommt beim nächsten Mal wieder
+        if (reason == null || ui.panel != null || ui.controls) return
+        val item = ui.item ?: return
+        health.healed(reason)
+        showMessage(t("Stream wird neu aufgebaut (%1) …", PlaybackHealth.reasonText(reason)), autoHide = true)
+        e.load(item, 0)
+    }
+
+    private fun memory(): MemoryStats {
+        val r = Runtime.getRuntime()
+        val mb = 1024 * 1024
+        return MemoryStats(
+            heapMb = ((r.totalMemory() - r.freeMemory()) / mb).toInt(),
+            heapMaxMb = (r.maxMemory() / mb).toInt(),
+            nativeMb = (android.os.Debug.getNativeHeapAllocatedSize() / mb).toInt(),
+        )
     }
 
     private fun refreshTracks() {

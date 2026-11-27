@@ -283,6 +283,10 @@ class WindowsTest {
         val start = p.sink.count
         Thread.sleep(2000)
         println("Bilder je Sekunde: ${(p.sink.count - start) / 2}")
+        // Werte für Selbstheilung und Diagnose: kommen im Hintergrund, beim zweiten Abruf sind sie da
+        p.stats()
+        waitFor("Statistik", 10, { p.stats().toString() }) { p.stats().shown > 0 }
+        println("Statistik: ${p.stats()}")
         SwingUtilities.invokeAndWait { p.release() }
         Thread.sleep(1500)
         assertEquals(emptyList<String>(), errors)

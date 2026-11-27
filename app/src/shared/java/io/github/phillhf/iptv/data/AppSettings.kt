@@ -77,6 +77,12 @@ object AppSettings {
 
     /** Fernseher: Bildwiederholrate an das Video anpassen. */
     var matchFrameRate by Pref(false)
+
+    /** Live-TV: Stream neu aufbauen, wenn er nach langer Laufzeit ruckelt oder auseinanderläuft. */
+    var selfHeal by Pref(true)
+
+    /** Diagnose-Werte im Player einblenden. */
+    var diagnostics by Pref(false)
     var theme by Pref("NIGHT")
     /** Sprache der App, leer = wie das Gerät. */
     var language by Pref("")
